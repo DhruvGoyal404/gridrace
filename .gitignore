@@ -1,0 +1,31 @@
+# Secrets and local config. Never commit these.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Rust
+/target/
+/fuzz/target/
+/fuzz/corpus/
+/fuzz/artifacts/
+/fuzz/coverage/
+
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+playwright-report/
+test-results/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Tooling output
+.claude/
+graphify-out/

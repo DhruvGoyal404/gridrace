@@ -1,0 +1,23 @@
+[package]
+name = "gridrace-fuzz"
+version = "0.0.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+gridrace-core = { path = "../crates/core" }
+libfuzzer-sys = "=0.4.13"
+
+# Its own workspace: it builds on nightly with sanitizers, the core builds on stable.
+[workspace]
+
+[[bin]]
+name = "parse_and_solve"
+path = "fuzz_targets/parse_and_solve.rs"
+test = false
+doc = false
+bench = false

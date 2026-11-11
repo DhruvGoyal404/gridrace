@@ -1,0 +1,19 @@
+[package]
+name = "gridrace-core"
+version = "0.1.0"
+description = "Four instrumented Sudoku solvers (brute force, bitmask, MRV + propagation, Dancing Links) and a unique-solution generator."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+# No dependencies, on purpose: the PRNG, property tests and bench harness are all std.
+[dependencies]
+
+[lints]
+workspace = true
+
+[[bench]]
+name = "solvers"
+harness = false

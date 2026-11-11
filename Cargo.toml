@@ -1,0 +1,39 @@
+[workspace]
+members = ["crates/core"]
+resolver = "3"
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/DhruvGoyal404/gridrace"
+rust-version = "1.99"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+# Cells, digits and counters move between u8/usize/u64 everywhere; the casts are bounded by the 9x9 grid.
+cast_possible_truncation = "allow"
+cast_lossless = "allow"
+module_name_repetitions = "allow"
+# Pedantic lints that add noise, not safety, in a small numeric crate.
+must_use_candidate = "allow"
+many_single_char_names = "allow"
+missing_panics_doc = "allow"
+missing_errors_doc = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+
+[profile.release]
+codegen-units = 1
+lto = true
+
+[profile.bench]
+codegen-units = 1
+lto = true
+
+# The property tests solve thousands of puzzles; unoptimized they take minutes.
+[profile.test]
+opt-level = 2
