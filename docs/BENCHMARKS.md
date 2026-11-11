@@ -26,11 +26,8 @@ corpus can't drift from the code.
   performance core) at high priority. Unpinned runs on this machine were up to 7× slower
   for the same work when Windows put the thread on an efficiency core.
 
-```powershell
-cargo bench --no-run   # prints the bench executable's path
-$p = Start-Process target\release\deps\solvers-<hash>.exe -ArgumentList --bench `
-     -WorkingDirectory crates\core -NoNewWindow -PassThru
-$p.ProcessorAffinity = 1; $p.PriorityClass = 'High'; $p.WaitForExit()
+```sh
+powershell -File scripts/bench.ps1 > bench.md   # builds, then runs the bench pinned to CPU 0
 ```
 
 ## Results
@@ -78,9 +75,40 @@ Hardest for brute force and bitmask: puzzle 0 (seed 247 relabelled), 6,267,154 n
   the median.
 - **Digit order is brute force's weakness, not the others'.** Relabelling multiplies
   brute force's median by about 100 and leaves MRV and DLX unchanged.
-- **DLX is not the fastest here, and that is a real result.** It visits the same number
-  of nodes as MRV but is about 3× slower. Setup is cheap (under 10 µs, measured on a solved grid). The gap is the
-  search: Knuth's S heuristic scans every remaining column, about 200, at each node,
-  while MRV's propagation does that work in a tighter loop. DLX's strength is
-  generality: the same 200 lines solve any exact-cover problem (pentominoes, N-queens)
-  once the columns are changed.
+- **DLX is not the fastest here, and that is a real result.** It visits about as many
+  nodes as MRV but takes about 2× as long. DLX is the general exact-cover algorithm: the
+  same code solves pentominoes or N-queens once the columns change. MRV with naked and
+  hidden singles is Sudoku-specific, and that specialisation pays. See "DLX tuning" below
+  for what was measured and changed.
+
+## DLX tuning (2026-11-12)
+
+An earlier version of this page blamed DLX's gap on scanning about 200 columns per node.
+The counters disproved it: 2,841 checks over 74 nodes is about 38 column reads per node,
+because the scan already stopped at a column of size 1. A timing probe over 200 puzzles
+(mean, pinned) then split DLX's time: **building the matrix took about 37 µs of 92 µs**,
+40%, while MRV took 83 µs in total.
+
+Two changes, measured in the same session to cancel the laptop's thermal drift:
+
+1. **Early exit on the first column too.** The scan stopped at size 0 or 1 only when that
+   column was strictly smaller than the current best, so a size-0 or size-1 first column
+   was missed. Mean checks fell from 2,841 to 2,036 (-28%). Nodes moved from 74 to 77
+   because ties now resolve to an earlier column.
+2. **One array of node structs** instead of six parallel arrays (left, right, up, down,
+   column, candidate): one allocation sized to the rows actually needed, and cover and
+   uncover read one node's links from one cache line. Setup fell from about 30 µs to
+   about 20 µs in the probe.
+
+DLX median as a multiple of MRV median, alternating old and new builds back to back
+(`scripts/bench.ps1`):
+
+| Corpus | Before (run 1, run 3) | After (run 2, run 4) |
+|---|---|---|
+| generated.txt | 2.85×, 2.68× | 2.44×, 1.94× |
+| adversarial.txt | 3.06×, 3.19× | 2.06×, 2.77× |
+
+About a quarter less time relative to MRV. MRV still wins: on these puzzles its
+propagation settles most cells before any branch, and DLX's per-node pointer work can't
+match that. The tables above predate the change; they're regenerated with the M2
+difficulty tiers.

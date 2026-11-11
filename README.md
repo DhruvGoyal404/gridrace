@@ -49,8 +49,11 @@ factor near 2. 1,350× fewer nodes, 165× faster than brute force.
 (each cell filled; each digit once per row, column and box), 729 candidate placements,
 pick placements covering every constraint exactly once. Algorithm X picks the
 constraint with fewest options, which is MRV and hidden singles in one rule. It visits
-the same number of nodes as MRV here, but scanning ~200 columns per node makes it about
-3× slower than the specialised solver. The same code solves any exact-cover problem.
+about as many nodes as MRV here but takes about twice as long: DLX is the general
+method, and Sudoku-specific propagation beats it on its home ground. Profiling showed 40%
+of DLX's time went into building the matrix; [docs/BENCHMARKS.md](docs/BENCHMARKS.md#dlx-tuning-2026-11-12)
+records what changed and the before/after ratios. The same code solves any exact-cover
+problem.
 
 **Adversarial puzzles.** Relabelling a puzzle's digits so its first row reads
 `987654321` makes brute force's first guess wrong in every first-row cell. On the

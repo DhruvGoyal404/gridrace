@@ -92,5 +92,5 @@ every shell: `export PATH="$HOME/.cargo/bin:$PATH"`). Node through nvm-windows
 
 - rust-analyzer can lock files under `target/debug/incremental`; the gate sets
   `CARGO_INCREMENTAL=0`.
-- The laptop CPU is hybrid (P and E cores): benchmark numbers come only from a run pinned
-  to CPU 0 at high priority (docs/BENCHMARKS.md, "Method").
+- The laptop CPU is hybrid (P and E cores): benchmark numbers come only from `scripts/bench.ps1`, which pins
+  the run to CPU 0 at high priority. Compare builds only within one session (thermal drift).

@@ -9,15 +9,22 @@ use crate::{Grid, box_of, col, row};
 
 const COLUMNS: usize = 324;
 
+/// One node of the matrix: a header (0 = root, 1..=324 = columns) or a 1 in a row.
+/// One array of these keeps a node's links on one cache line during cover and uncover.
+#[derive(Clone, Copy)]
+struct Node {
+    left: u32,
+    right: u32,
+    up: u32,
+    down: u32,
+    column: u16,
+    /// The candidate `cell * 9 + digit - 1` (row nodes only).
+    candidate: u16,
+}
+
 struct Matrix {
-    left: Vec<u32>,
-    right: Vec<u32>,
-    up: Vec<u32>,
-    down: Vec<u32>,
-    column: Vec<u32>,
+    nodes: Vec<Node>,
     size: [u32; COLUMNS + 1],
-    /// For each node, its candidate `cell * 9 + digit - 1`.
-    candidate: Vec<u16>,
 }
 
 /// The four columns a candidate satisfies, 1-based (node 0 is the root).
@@ -42,50 +49,51 @@ impl Matrix {
                 }
             }
         }
-        let n = COLUMNS + 1 + 729 * 4;
+        let masks = Masks::of(cells);
+        let rows: u32 = (0..81)
+            .filter(|&c| cells[c] == 0)
+            .map(|c| masks.free(c).count_ones())
+            .sum();
+        let mut nodes = Vec::with_capacity(COLUMNS + 1 + rows as usize * 4);
+        nodes.extend((0..=COLUMNS as u32).map(|i| Node {
+            left: i,
+            right: i,
+            up: i,
+            down: i,
+            column: i as u16,
+            candidate: 0,
+        }));
         let mut m = Matrix {
-            left: Vec::with_capacity(n),
-            right: Vec::with_capacity(n),
-            up: Vec::with_capacity(n),
-            down: Vec::with_capacity(n),
-            column: Vec::with_capacity(n),
+            nodes,
             size: [0; COLUMNS + 1],
-            candidate: Vec::with_capacity(n),
         };
-        for i in 0..=COLUMNS as u32 {
-            m.left.push(i);
-            m.right.push(i);
-            m.up.push(i);
-            m.down.push(i);
-            m.column.push(i);
-            m.candidate.push(0);
-        }
         // Link the needed headers into one circular list with the root.
         let mut last = 0;
         for c in (1..=COLUMNS).filter(|&c| needed[c]) {
-            m.right[last] = c as u32;
-            m.left[c] = last as u32;
+            m.nodes[last].right = c as u32;
+            m.nodes[c].left = last as u32;
             last = c;
         }
-        m.right[last] = 0;
-        m.left[0] = last as u32;
+        m.nodes[last].right = 0;
+        m.nodes[0].left = last as u32;
 
-        let masks = Masks::of(cells);
         for cell in (0..81).filter(|&c| cells[c] == 0) {
             for d in digits(masks.free(cell)) {
                 let d = d as usize - 1;
-                let start = m.left.len() as u32;
+                let start = m.nodes.len() as u32;
                 for (k, c) in columns(cell, d).into_iter().enumerate() {
                     let node = start + k as u32;
-                    m.left.push(if k == 0 { start + 3 } else { node - 1 });
-                    m.right.push(if k == 3 { start } else { node + 1 });
-                    m.up.push(m.up[c]);
-                    m.down.push(c as u32);
-                    let above = m.up[c] as usize;
-                    m.down[above] = node;
-                    m.up[c] = node;
-                    m.column.push(c as u32);
-                    m.candidate.push((cell * 9 + d) as u16);
+                    let above = m.nodes[c].up;
+                    m.nodes.push(Node {
+                        left: if k == 0 { start + 3 } else { node - 1 },
+                        right: if k == 3 { start } else { node + 1 },
+                        up: above,
+                        down: c as u32,
+                        column: c as u16,
+                        candidate: (cell * 9 + d) as u16,
+                    });
+                    m.nodes[above as usize].down = node;
+                    m.nodes[c].up = node;
                     m.size[c] += 1;
                 }
             }
@@ -94,57 +102,63 @@ impl Matrix {
     }
 
     fn cover(&mut self, c: u32) {
+        let n = &mut self.nodes;
         let c = c as usize;
-        let (l, r) = (self.left[c], self.right[c]);
-        self.right[l as usize] = r;
-        self.left[r as usize] = l;
-        let mut i = self.down[c] as usize;
+        let (l, r) = (n[c].left, n[c].right);
+        n[l as usize].right = r;
+        n[r as usize].left = l;
+        let mut i = n[c].down as usize;
         while i != c {
-            let mut j = self.right[i] as usize;
+            let mut j = n[i].right as usize;
             while j != i {
-                let (u, d) = (self.up[j], self.down[j]);
-                self.down[u as usize] = d;
-                self.up[d as usize] = u;
-                self.size[self.column[j] as usize] -= 1;
-                j = self.right[j] as usize;
+                let Node {
+                    up, down, column, ..
+                } = n[j];
+                n[up as usize].down = down;
+                n[down as usize].up = up;
+                self.size[column as usize] -= 1;
+                j = n[j].right as usize;
             }
-            i = self.down[i] as usize;
+            i = n[i].down as usize;
         }
     }
 
     fn uncover(&mut self, c: u32) {
+        let n = &mut self.nodes;
         let c = c as usize;
-        let mut i = self.up[c] as usize;
+        let mut i = n[c].up as usize;
         while i != c {
-            let mut j = self.left[i] as usize;
+            let mut j = n[i].left as usize;
             while j != i {
-                self.size[self.column[j] as usize] += 1;
-                let (u, d) = (self.up[j], self.down[j]);
-                self.down[u as usize] = j as u32;
-                self.up[d as usize] = j as u32;
-                j = self.left[j] as usize;
+                let Node {
+                    up, down, column, ..
+                } = n[j];
+                self.size[column as usize] += 1;
+                n[up as usize].down = j as u32;
+                n[down as usize].up = j as u32;
+                j = n[j].left as usize;
             }
-            i = self.up[i] as usize;
+            i = n[i].up as usize;
         }
-        let (l, r) = (self.left[c], self.right[c]);
-        self.right[l as usize] = c as u32;
-        self.left[r as usize] = c as u32;
+        let (l, r) = (n[c].left, n[c].right);
+        n[l as usize].right = c as u32;
+        n[r as usize].left = c as u32;
     }
 
     /// Covers every column of a row except the one it was reached through.
     fn select(&mut self, row: u32) {
-        let mut j = self.right[row as usize];
+        let mut j = self.nodes[row as usize].right;
         while j != row {
-            self.cover(self.column[j as usize]);
-            j = self.right[j as usize];
+            self.cover(u32::from(self.nodes[j as usize].column));
+            j = self.nodes[j as usize].right;
         }
     }
 
     fn deselect(&mut self, row: u32) {
-        let mut j = self.left[row as usize];
+        let mut j = self.nodes[row as usize].left;
         while j != row {
-            self.uncover(self.column[j as usize]);
-            j = self.left[j as usize];
+            self.uncover(u32::from(self.nodes[j as usize].column));
+            j = self.nodes[j as usize].left;
         }
     }
 }
@@ -157,33 +171,34 @@ pub fn run(puzzle: &Grid, ctx: &mut Ctx) {
 
 /// True when the search should stop.
 fn search(m: &mut Matrix, cells: &mut [u8; 81], ctx: &mut Ctx) -> bool {
-    if m.right[0] == 0 {
+    if m.nodes[0].right == 0 {
         return ctx.found(cells);
     }
-    // Knuth's S heuristic: the column with fewest remaining rows.
-    let mut best = m.right[0];
+    // Knuth's S heuristic: the column with fewest remaining rows. Stop scanning at size 0
+    // (dead end: backtrack now) or 1 (forced: nothing can beat it).
+    let mut best = m.nodes[0].right;
     let mut j = best;
     while j != 0 {
         ctx.stats.checks += 1;
         if m.size[j as usize] < m.size[best as usize] {
             best = j;
-            if m.size[best as usize] <= 1 {
-                break;
-            }
         }
-        j = m.right[j as usize];
+        if m.size[best as usize] <= 1 {
+            break;
+        }
+        j = m.nodes[j as usize].right;
     }
     if m.size[best as usize] == 0 {
         return false;
     }
     let forced = m.size[best as usize] == 1;
     m.cover(best);
-    let mut r = m.down[best as usize];
+    let mut r = m.nodes[best as usize].down;
     while r != best {
         if !ctx.node() {
             return true;
         }
-        let cand = m.candidate[r as usize] as usize;
+        let cand = m.nodes[r as usize].candidate as usize;
         let (cell, d) = (cand / 9, (cand % 9) as u8 + 1);
         cells[cell] = d;
         ctx.event(cell, d, if forced { Step::Forced } else { Step::Guess });
@@ -197,7 +212,7 @@ fn search(m: &mut Matrix, cells: &mut [u8; 81], ctx: &mut Ctx) -> bool {
             ctx.stats.backtracks += 1;
         }
         ctx.event(cell, d, Step::Undo);
-        r = m.down[r as usize];
+        r = m.nodes[r as usize].down;
     }
     m.uncover(best);
     false
