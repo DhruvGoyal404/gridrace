@@ -96,8 +96,23 @@ visual contract; `scripts/contrast.mjs` checks its colours), `.impeccable/surfac
 
 ## Deployment
 
-Static files on Cloudflare Pages (free tier). Nothing bills while idle, so there are no
-up/down scripts; the README says so. Strict CSP, no third-party scripts at runtime.
+Static files on Cloudflare Pages (free tier), project `gridrace`, custom domain
+gridrace.dhruvgoyal.tech (DNS on Cloudflare). Nothing bills while idle, so there are no
+up/down scripts; the README says so.
+
+- CI's last job deploys `web/dist` with wrangler pinned in `deploy/` (its own lockfile,
+  checked by the dependency policy), after every other job passes on `main`. It needs the
+  repo secrets `CLOUDFLARE_API_TOKEN` (a custom token: Account / Cloudflare Pages / Edit
+  on this one account, nothing else) and `CLOUDFLARE_ACCOUNT_ID`; without them it skips.
+  No Cloudflare GitHub app has repo access.
+- Headers live in `web/public/_headers`: strict CSP (`script-src 'self'
+  'wasm-unsafe-eval'`, `style-src 'self'`, no inline anything), COOP/COEP for precise
+  timers, HSTS. `web/scripts/serve.mjs` serves `dist` with the same file, and the e2e
+  suite runs on it, so a CSP regression fails locally before it ships.
+- Offline: `vite.config.ts` emits `sw.js` precaching every built file; the e2e suite
+  reloads offline and plays.
+- `web/scripts/assets.mjs` renders the icons and the OG image from HTML; rerun it when
+  the brand or the quoted medians change.
 
 ## Environment
 

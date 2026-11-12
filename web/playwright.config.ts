@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// Runs against the production build (npm run build first), as Cloudflare will serve it.
+// Runs against the production build (npm run build first), served with the same headers
+// Cloudflare Pages sends. E2E_BASE_URL points it at a deployed site instead.
 export default defineConfig({
   testDir: "e2e",
   timeout: 90_000,
@@ -8,9 +9,12 @@ export default defineConfig({
   workers: process.env.CI ? 2 : 2,
   retries: 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
-  use: { baseURL: "http://localhost:4173", trace: "retain-on-failure" },
-  webServer: {
-    command: "npm run preview",
+  use: { baseURL: process.env.E2E_BASE_URL ?? "http://localhost:4173", trace: "retain-on-failure" },
+  webServer: process.env.E2E_BASE_URL
+    ? undefined
+    : {
+    // Production headers (public/_headers: strict CSP, COOP/COEP), not Vite's preview.
+    command: "node scripts/serve.mjs 4173",
     url: "http://localhost:4173",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,

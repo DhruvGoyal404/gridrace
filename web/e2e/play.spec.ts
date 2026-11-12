@@ -30,6 +30,7 @@ test("play by keyboard: enter, notes, undo, redo, mistakes", async ({ page, erro
 
 test("the hint ladder reveals step by step, then solves the puzzle", async ({ page, errors }) => {
   void errors;
+  test.setTimeout(180_000); // up to 204 hint presses, each a round trip to the worker
   await page.goto(`/play?p=${CLASSIC}`);
   const hint = page.getByRole("button", { name: /^(Give me a hint|Show where to look|Show why|Apply this move)$/ });
   await hint.click();

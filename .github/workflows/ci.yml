@@ -19,7 +19,7 @@ jobs:
       - run: node --test scripts/*.test.mjs
       - run: node scripts/check-workflows.mjs
       - run: node scripts/contrast.mjs
-      - run: node scripts/check-deps.mjs --audit . fuzz web
+      - run: node scripts/check-deps.mjs --audit . fuzz web deploy
 
   secrets:
     name: Gitleaks
@@ -103,3 +103,65 @@ jobs:
         run: |
           mkdir -p fuzz/corpus/parse_and_solve
           cargo +"$NIGHTLY" fuzz run parse_and_solve fuzz/corpus/parse_and_solve fuzz/seeds -- -max_total_time=120
+
+  deploy:
+    name: Deploy to Cloudflare Pages
+    if: github.ref == 'refs/heads/main'
+    needs: [policy, secrets, rust, web, audit, fuzz]
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: deploy-pages
+      cancel-in-progress: false
+    env:
+      # A token scoped to Cloudflare Pages: Edit on one account, nothing else.
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - name: Skip until the Cloudflare secrets exist
+        id: ready
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID not set; skipping the deploy."
+          fi
+      - if: steps.ready.outputs.ok == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: steps.ready.outputs.ok == 'true'
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            deploy/package-lock.json
+      - if: steps.ready.outputs.ok == 'true'
+        run: rustup show active-toolchain || rustup toolchain install
+      - if: steps.ready.outputs.ok == 'true'
+        uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32 # v2.88.0
+        with:
+          tool: wasm-bindgen@0.2.129
+      - name: Build the site
+        if: steps.ready.outputs.ok == 'true'
+        working-directory: web
+        run: |
+          npm ci
+          npm run wasm
+          npm run build
+      - name: Install the pinned wrangler
+        if: steps.ready.outputs.ok == 'true'
+        working-directory: deploy
+        run: npm ci
+      - name: Create the Pages project on the first deploy
+        if: steps.ready.outputs.ok == 'true'
+        working-directory: deploy
+        run: |
+          npx wrangler pages project list > projects.txt
+          if ! grep -qw gridrace projects.txt; then
+            npx wrangler pages project create gridrace --production-branch main
+          fi
+      - name: Deploy web/dist
+        if: steps.ready.outputs.ok == 'true'
+        working-directory: deploy
+        run: npx wrangler pages deploy ../web/dist --project-name gridrace --branch main --commit-hash "$GITHUB_SHA"
+
