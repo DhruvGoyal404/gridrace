@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "flat-type-hierarchy",
+        "value": "*",
+        "files": [
+          "web/index.html"
+        ],
+        "createdAt": "2026-11-12T19:04:42.474Z",
+        "reason": "agent triage: static scan can't resolve Tailwind arbitrary sizes (text-[36px], text-[22px]); rendered h2 36px, h3 22px, body 16px per .review/m3 screenshots"
+      }
+    ]
+  }
+}
