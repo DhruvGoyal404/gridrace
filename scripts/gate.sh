@@ -15,8 +15,11 @@ cargo run --release --locked -q -p gridrace-core --example corpus
 git diff --exit-code data/
 (cd fuzz && cargo check --locked)
 
+# Web: the WebAssembly build, then typecheck, lint, unit, production build, e2e with axe.
+(cd web && npm run wasm && npm run typecheck && npm run lint && npm test && npm run build && npx playwright test)
+
 node --test scripts/*.test.mjs
 node scripts/check-workflows.mjs
 node scripts/contrast.mjs
-node scripts/check-deps.mjs . fuzz
+node scripts/check-deps.mjs --audit . fuzz web
 echo "gate: all green"

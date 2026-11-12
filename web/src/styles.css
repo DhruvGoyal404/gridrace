@@ -1,0 +1,218 @@
+@import "tailwindcss";
+@import "@fontsource-variable/archivo/wdth.css";
+
+/* Tokens: DESIGN.md "Colour". Enamel (light) is the base; Night (dark) follows the system
+   unless the visitor picked a board. scripts/contrast.mjs checks these pairs. */
+:root {
+  color-scheme: light;
+  --ground: #f3f4f2;
+  --panel: #ffffff;
+  --flap: #ffffff;
+  --flap-edge: #c9ced4;
+  --rule: #d7dadf;
+  --box-rule: #101215;
+  --ink: #101215;
+  --ink-2: #474d56;
+  --signal: #f5c400;
+  --on-signal: #101215;
+  --focus: #101215;
+  --danger: #b42318;
+  --placed: #0b5cad;
+  --brt: #b93a0b;
+  --bit: #5b3cc4;
+  --mrv: #0b6f64;
+  --dlx: #1d5fd6;
+  --tint: rgb(16 18 21 / 0.06);
+  --signal-wash: rgb(245 196 0 / 0.28);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="enamel"]) {
+    color-scheme: dark;
+    --ground: #0b0c0e;
+    --panel: #131519;
+    --flap: #1c1f24;
+    --flap-edge: #2a2e35;
+    --rule: #2a2e35;
+    --box-rule: #727883;
+    --ink: #ecedea;
+    --ink-2: #a6abb4;
+    --focus: #f5c400;
+    --danger: #ff6b5e;
+    --placed: #8fd3ff;
+    --brt: #ff7a59;
+    --bit: #b9a2ff;
+    --mrv: #3fd0c0;
+    --dlx: #7ab0ff;
+    --tint: rgb(236 237 234 / 0.07);
+    --signal-wash: rgb(245 196 0 / 0.16);
+  }
+}
+
+:root[data-theme="night"] {
+  color-scheme: dark;
+  --ground: #0b0c0e;
+  --panel: #131519;
+  --flap: #1c1f24;
+  --flap-edge: #2a2e35;
+  --rule: #2a2e35;
+  --box-rule: #727883;
+  --ink: #ecedea;
+  --ink-2: #a6abb4;
+  --focus: #f5c400;
+  --danger: #ff6b5e;
+  --placed: #8fd3ff;
+  --brt: #ff7a59;
+  --bit: #b9a2ff;
+  --mrv: #3fd0c0;
+  --dlx: #7ab0ff;
+  --tint: rgb(236 237 234 / 0.07);
+  --signal-wash: rgb(245 196 0 / 0.16);
+}
+
+@theme inline {
+  --color-ground: var(--ground);
+  --color-panel: var(--panel);
+  --color-flap: var(--flap);
+  --color-flap-edge: var(--flap-edge);
+  --color-rule: var(--rule);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-signal: var(--signal);
+  --color-on-signal: var(--on-signal);
+  --color-danger: var(--danger);
+  --color-placed: var(--placed);
+  --color-brt: var(--brt);
+  --color-bit: var(--bit);
+  --color-mrv: var(--mrv);
+  --color-dlx: var(--dlx);
+  --font-sans: "Archivo Variable", "Arial Narrow", system-ui, sans-serif;
+}
+
+/* The module: one board cell. Everything else is sized from it (DESIGN.md, "Space"). */
+:root {
+  --cell: clamp(34px, 9.6vw, 62px);
+}
+
+/* Layered, so Tailwind utilities on an element always win over these defaults. */
+@layer base {
+  html {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-text-size-adjust: 100%;
+    font-variant-numeric: tabular-nums;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+  }
+
+  ::selection {
+    background: var(--signal);
+    color: var(--on-signal);
+  }
+
+  * {
+    caret-color: var(--signal);
+    scrollbar-color: var(--flap-edge) transparent;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  a {
+    color: inherit;
+    text-underline-offset: 0.2em;
+    text-decoration-thickness: 1px;
+  }
+}
+
+@layer components {
+  .condensed {
+    font-stretch: 75%;
+  }
+
+  .semi-condensed {
+    font-stretch: 87.5%;
+  }
+
+  .label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  /* A board tile is a split flap: two halves divided by a hairline. */
+  .tile {
+    position: relative;
+    background: var(--flap);
+    overflow: hidden;
+  }
+
+  /* Glyphs sit above the split, so the line shows only between strokes, as on a real flap. */
+  .tile > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .tile::after {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    inset: 50% 0 auto;
+    height: 1px;
+    background: var(--flap-edge);
+    pointer-events: none;
+  }
+
+  /* Signature move: a digit arrives with a split-flap turn (DESIGN.md, "Motion"). */
+  .flap-in {
+    display: inline-block;
+    transform-origin: 50% 50%;
+    animation: flap var(--flap-ms, 140ms) cubic-bezier(0.2, 0.9, 0.3, 1.15);
+  }
+
+  @keyframes flap {
+    0% {
+      transform: perspective(240px) rotateX(-88deg);
+      filter: brightness(0.6);
+    }
+    100% {
+      transform: perspective(240px) rotateX(0deg);
+      filter: none;
+    }
+  }
+
+  .note[data-note]::before {
+    content: attr(data-note);
+  }
+
+  .blink {
+    animation: blink 0.9s steps(2, jump-none) infinite;
+  }
+
+  @keyframes blink {
+    50% {
+      opacity: 0.15;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .flap-in,
+    .blink {
+      animation: none;
+    }
+  }
+
+  /* The static explainer is visible to crawlers and on the landing route only. */
+  .explainer[hidden] {
+    display: none;
+  }
+}

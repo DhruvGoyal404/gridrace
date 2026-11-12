@@ -19,7 +19,7 @@ jobs:
       - run: node --test scripts/*.test.mjs
       - run: node scripts/check-workflows.mjs
       - run: node scripts/contrast.mjs
-      - run: node scripts/check-deps.mjs . fuzz
+      - run: node scripts/check-deps.mjs --audit . fuzz web
 
   secrets:
     name: Gitleaks
@@ -51,6 +51,33 @@ jobs:
         run: |
           cargo run --release --locked -p gridrace-core --example corpus
           git diff --exit-code data/
+
+  web:
+    name: Web
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: rustup show active-toolchain || rustup toolchain install
+      - uses: taiki-e/install-action@86f7a0ffb25f40114606501a311ebcfaf882ea32 # v2.88.0
+        with:
+          tool: wasm-bindgen@0.2.129
+      - run: npm ci
+      - run: npm run wasm
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+      - name: End-to-end tests with axe, desktop and phone
+        run: npx playwright test
 
   audit:
     name: Cargo deny

@@ -12,7 +12,7 @@ a rule, change this file in its own commit and say why.
 |---|---|---|
 | M1 | Rust core: four solvers, counters, traces, generator, tests, fuzzing, benchmarks | done |
 | M2 | Human-style solver, hints that explain why, difficulty grading, graded corpus | done |
-| M3 | Web app: DESIGN.md first, play, race with replay, hints, generator, paste | next |
+| M3 | Web app: DESIGN.md first, play, race with replay, hints, generator, paste | in progress |
 | M4 | PWA, SEO, Lighthouse, Cloudflare Pages, e2e on the live site | |
 
 Docs: [README.md](README.md) (for interviewers), [docs/BENCHMARKS.md](docs/BENCHMARKS.md)
@@ -44,7 +44,9 @@ visual contract; `scripts/contrast.mjs` checks its colours), `.impeccable/surfac
   newest that is older. `scripts/check-deps.mjs` enforces it for lockfiles and toolchains.
 - **Exact pins.** Crates as `=x.y.z`, npm without `^` or `~`. Lockfiles committed.
   `--locked` / `npm ci` in CI. A too-new transitive crate is held back with
-  `cargo update -p <crate> --precise <version>` (fuzz/: `cc` at 1.10.0).
+  `cargo update -p <crate> --precise <version>` (fuzz/: `cc` at 1.10.0; root: `itoa` 1.0.18,
+  `syn` 3.0.9). web/ forces minimatch 11.0.3 with an npm override (GHSA-g3hv-75wg-m249,
+  dev-only through eslint); drop it once eslint and typescript-eslint require a fixed range.
 - **Clean audits.** `cargo deny check` (advisories, licences, sources) and `npm audit`.
 - **Security exception:** a fix for a published advisory may be younger than 14 days.
   Record it in docs/DEPENDENCY_EXCEPTIONS.md with the advisory, the date and an expiry.

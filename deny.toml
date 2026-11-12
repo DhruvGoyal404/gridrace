@@ -10,7 +10,9 @@ yanked = "deny"
 [licenses]
 version = 2
 # NCSA is LLVM's licence for libFuzzer, built into the fuzz binary only. Never shipped.
-allow = ["MIT", "Apache-2.0", "NCSA"]
+# Unicode-3.0 covers unicode-ident's data tables (a build-time macro dependency).
+# Unlicense comes with an MIT alternative (memchr), which is the one we take.
+allow = ["MIT", "Apache-2.0", "NCSA", "Unicode-3.0"]
 confidence-threshold = 0.9
 
 [bans]

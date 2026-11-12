@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GridRace: four Sudoku solvers, raced</title>
+    <meta
+      name="description"
+      content="Four Sudoku solvers race on the same puzzle in your browser: brute force, bitmask, MRV with constraint propagation, and Dancing Links, with every node counted and a step-by-step replay. Play with hints that explain why."
+    />
+    <meta name="theme-color" content="#0b0c0e" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f3f4f2" media="(prefers-color-scheme: light)" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="canonical" href="https://gridrace.dhruvgoyal.tech/" />
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <section id="explainer" class="explainer border-t border-rule" aria-labelledby="explainer-title">
+      <div class="mx-auto max-w-[1240px] px-4 py-14">
+        <h2 id="explainer-title" class="semi-condensed text-[28px] leading-tight font-bold lg:text-[36px]">
+          From brute force to Dancing Links
+        </h2>
+        <p class="mt-3 max-w-[70ch] text-[16px] text-ink-2">
+          The race above runs four solvers written in Rust, compiled to WebAssembly, each in its own worker. They count the
+          same three things: <strong class="text-ink">nodes</strong> (placements tried),
+          <strong class="text-ink">backtracks</strong> (guesses undone), and <strong class="text-ink">checks</strong>
+          (questions of the form "can this digit go here?"). What a check costs is where they differ.
+        </p>
+
+        <div class="mt-8 overflow-x-auto" tabindex="0" role="region" aria-label="The four solvers compared, scrolls sideways on small screens">
+          <table class="w-full min-w-[720px] border-collapse text-left">
+            <caption class="sr-only">The four solvers compared</caption>
+            <thead>
+              <tr class="border-b-2 border-ink">
+                <td class="sticky left-0 w-[132px] bg-ground"></td>
+                <th scope="col" class="condensed pb-2 text-[22px] font-bold text-brt">BRT <span class="block text-[15px] font-semibold text-ink [font-stretch:100%]">Brute force</span></th>
+                <th scope="col" class="condensed pb-2 text-[22px] font-bold text-bit">BIT <span class="block text-[15px] font-semibold text-ink [font-stretch:100%]">Bitmask</span></th>
+                <th scope="col" class="condensed pb-2 text-[22px] font-bold text-mrv">MRV <span class="block text-[15px] font-semibold text-ink [font-stretch:100%]">MRV + propagation</span></th>
+                <th scope="col" class="condensed pb-2 text-[22px] font-bold text-dlx">DLX <span class="block text-[15px] font-semibold text-ink [font-stretch:100%]">Dancing Links</span></th>
+              </tr>
+            </thead>
+            <tbody class="align-top text-[15px] leading-relaxed">
+              <tr class="border-b border-rule">
+                <th scope="row" class="label sticky left-0 bg-ground py-3 pr-4 text-ink-2">The idea</th>
+                <td class="py-3 pr-5">Take the first empty cell, try 1 to 9, and check each digit by scanning its row, column and box. Backtrack on a dead end.</td>
+                <td class="py-3 pr-5">The same search, but a 9-bit mask per row, column and box gives every legal digit at once: one AND-NOT instead of 27 reads.</td>
+                <td class="py-3 pr-5">After each guess, place forced digits (naked and hidden singles) until nothing changes, then branch on the cell with the fewest candidates.</td>
+                <td class="py-3 pr-5">Knuth's Algorithm X on Sudoku as exact cover: 729 placements, 324 constraints. Cover and uncover are O(1) pointer splices.</td>
+              </tr>
+              <tr class="border-b border-rule">
+                <th scope="row" class="label sticky left-0 bg-ground py-3 pr-4 text-ink-2">Cost of a node</th>
+                <td class="py-3 pr-5">9 digits × 27 cell reads</td>
+                <td class="py-3 pr-5">O(1) per cell</td>
+                <td class="py-3 pr-5">One propagation pass, O(81)</td>
+                <td class="py-3 pr-5">O(columns) to choose, O(1) per link</td>
+              </tr>
+              <tr class="border-b border-rule">
+                <th scope="row" class="label sticky left-0 bg-ground py-3 pr-4 text-ink-2">Easy puzzles</th>
+                <td class="condensed py-3 pr-5 text-[17px]"><strong>3.26 ms</strong>, 164,517 nodes</td>
+                <td class="condensed py-3 pr-5 text-[17px]"><strong>447 µs</strong>, 164,517 nodes</td>
+                <td class="condensed py-3 pr-5 text-[17px]"><strong>12.0 µs</strong>, 56 nodes</td>
+                <td class="condensed py-3 pr-5 text-[17px]"><strong>29.5 µs</strong>, 56 nodes</td>
+              </tr>
+              <tr class="border-b border-rule">
+                <th scope="row" class="label sticky left-0 bg-ground py-3 pr-4 text-ink-2">Hardest puzzles</th>
+                <td class="condensed py-3 pr-5 text-[17px]"><strong>8.99 ms</strong>, 194,314 nodes</td>
+                <td class="condensed py-3 pr-5 text-[17px]"><strong>1.25 ms</strong>, 194,314 nodes</td>
+                <td class="condensed py-3 pr-5 text-[17px]"><strong>220 µs</strong>, 701 nodes</td>
+                <td class="condensed py-3 pr-5 text-[17px]"><strong>272 µs</strong>, 799 nodes</td>
+              </tr>
+              <tr>
+                <th scope="row" class="label sticky left-0 bg-ground py-3 pr-4 text-ink-2">What it teaches</th>
+                <td class="py-3 pr-5">Exponential search with no pruning. Digit order decides everything: relabel a puzzle and it can take 100 times longer.</td>
+                <td class="py-3 pr-5">Same tree, cheaper checks: 5 to 7 times faster with not one node fewer.</td>
+                <td class="py-3 pr-5">A smaller tree beats a faster check: thousands of times fewer nodes.</td>
+                <td class="py-3 pr-5">The general method. It loses to Sudoku-specific propagation on easy ground and nearly catches it when the search gets hard.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="mt-3 text-[14px] text-ink-2">
+          Medians measured natively on one laptop core, 100 puzzles per tier and 50 built to be hardest. Method and every number:
+          <a href="https://github.com/DhruvGoyal404/gridrace/blob/main/docs/BENCHMARKS.md">docs/BENCHMARKS.md</a>. The Bench page
+          measures them again in your browser.
+        </p>
+
+        <div class="mt-14 grid gap-10 lg:grid-cols-2">
+          <div>
+            <h3 class="semi-condensed text-[22px] font-bold">Hints that say why</h3>
+            <p class="mt-2 max-w-[65ch] text-[16px] text-ink-2">
+              A human-style solver works from pencil marks with seventeen named techniques, easiest first, in the order of Sudoku
+              Explainer's difficulty ratings: from hidden singles to X-Wings, Unique Rectangles and XY-Chains. A hint names the
+              technique, points at where to look, then explains the deduction and highlights the cells that prove it.
+            </p>
+          </div>
+          <div>
+            <h3 class="semi-condensed text-[22px] font-bold">Puzzles with exactly one solution</h3>
+            <p class="mt-2 max-w-[65ch] text-[16px] text-ink-2">
+              The generator empties cells while the puzzle keeps one solution, counting solutions to two after every removal.
+              Difficulty is the hardest technique a solve needs, not the number of empty cells: Easy, Medium, Hard, Expert,
+              Master, or Beyond.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="border-t border-rule">
+      <div class="mx-auto flex max-w-[1240px] flex-wrap justify-between gap-3 px-4 py-6 text-[14px] text-ink-2">
+        <p>GridRace runs entirely in your browser: no server, no accounts, no tracking.</p>
+        <p>
+          <a href="https://github.com/DhruvGoyal404/gridrace">Source on GitHub</a>, MIT licence. By Dhruv Goyal.
+        </p>
+      </div>
+    </footer>
+
+    <noscript>
+      <p class="mx-auto max-w-[1240px] px-4 py-6">The race, the game and the bench need JavaScript and WebAssembly.</p>
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

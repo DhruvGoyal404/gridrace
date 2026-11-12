@@ -16,10 +16,10 @@ gridrace.dhruvgoyal.tech. No backend. (Set by the owner's brief.)
 
 - **Primary: interviewers and developers** evaluating the owner's algorithmic thinking.
   They arrive from a resume or GitHub link, have a few minutes, and want to see the
-  algorithms work and the numbers behind them. *(Inferred from the brief: "shows
-  algorithmic thinking", "README written for interviewers". Not confirmed in interview.)*
-- **Secondary: Sudoku players** who want to play, get hints that explain why, and
-  generate puzzles at a chosen difficulty.
+  algorithms work and the numbers behind them.
+- **Second: Sudoku players** who want to play, get hints that explain why, and generate
+  puzzles at a chosen difficulty. Play mode must feel as good as Race: it is a product
+  for them, not a demo.
 
 ## Product Purpose
 
@@ -48,8 +48,9 @@ cells.
 ## Capabilities and Constraints
 
 - Modes: Race (four solvers side by side, counters, replay with play/pause/speed/step),
-  Play (enter digits, pencil marks, hints with explanations and highlighted pattern
-  cells), Generate (Easy, Medium, Hard, Expert, Master, Beyond; shareable by seed),
+  Play (digits, notes / pencil marks, undo and redo, an optional mistakes check, a timer,
+  and a hint ladder that reveals as little as needed: the technique first, then where to
+  look, then the full explanation with highlighted cells, then the placement), Generate (Easy, Medium, Hard, Expert, Master, Beyond; shareable by seed),
   Paste (81-character string, validated: conflicts, no solution, several solutions are
   explained).
 - Traces are capped; the UI says when a replay was capped. Brute force may hit a node
@@ -58,13 +59,12 @@ cells.
 - Terms: "nodes", "backtracks", "checks" as defined in `crates/core/src/search.rs`;
   technique names as in `crates/core/src/human.rs`; cells as r1c1..r9c9.
 - Landing page: crawlable HTML explaining the product and the four algorithms, leading
-  into the live race. *(Inferred; not confirmed.)*
+  into the live race.
 
 ## Brand Commitments
 
 - Name: GridRace. Personal portfolio project of Dhruv Goyal (MIT).
 - Voice: precise and numbers-first, like the README: say what happened and why, no hype.
-  *(Inferred from the existing docs; not confirmed.)*
 
 ## Evidence on Hand
 
@@ -82,6 +82,8 @@ cells.
    prove it.
 4. Never freeze, never lie: long searches report progress or limits, capped traces say
    they're capped.
+5. Players come first in Play: the hint ladder gives the smallest nudge that helps, and
+   mistakes are shown only when the player asks for them.
 
 ## Accessibility & Inclusion
 
