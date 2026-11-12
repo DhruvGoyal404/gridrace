@@ -10,11 +10,12 @@
 
 pub mod generate;
 mod grid;
+pub mod human;
 pub mod rng;
 mod search;
 mod solvers;
 
-pub use grid::{Grid, ParseError, UNITS, are_peers, box_of, col, row};
+pub use grid::{Grid, PEERS, ParseError, UNITS, are_peers, box_of, col, row};
 pub use search::{
     Algorithm, Event, InvalidGrid, Options, Outcome, Stats, Step, Trace, count_solutions, solve,
 };

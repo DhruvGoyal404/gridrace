@@ -2,6 +2,7 @@
 //! order and empty each one only if the puzzle still has a single solution (counting
 //! stops at 2). Every clue left is necessary, so the result is minimal.
 
+use crate::human::{Difficulty, Grade, grade};
 use crate::rng::Rng;
 use crate::{Grid, count_solutions};
 
@@ -37,17 +38,50 @@ pub fn random_solution(rng: &mut Rng) -> Grid {
 pub fn minimal_puzzle(seed: u64) -> (Grid, Grid) {
     let mut rng = Rng::new(seed);
     let solution = random_solution(&mut rng);
-    let mut puzzle = solution;
+    (minimize(solution, &mut rng), solution)
+}
+
+/// Empties clues in random order while the puzzle keeps exactly one solution. The result
+/// is minimal: removing any remaining clue allows a second solution.
+pub fn minimize(mut puzzle: Grid, rng: &mut Rng) -> Grid {
     let mut order: [usize; 81] = std::array::from_fn(|i| i);
     rng.shuffle(&mut order);
     for cell in order {
         let digit = puzzle.0[cell];
+        if digit == 0 {
+            continue;
+        }
         puzzle.0[cell] = 0;
         if count_solutions(&puzzle, 2) != Some(1) {
             puzzle.0[cell] = digit;
         }
     }
-    (puzzle, solution)
+    puzzle
+}
+
+/// A generated puzzle and what it is: `minimal_puzzle(seed)`, graded.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Generated {
+    pub seed: u64,
+    pub puzzle: Grid,
+    pub solution: Grid,
+    pub grade: Grade,
+}
+
+/// The first puzzle graded `difficulty` among seeds `seed, seed + 1, ...`, trying at most
+/// `attempts`. The result carries its own seed, so a puzzle can be shared as one number.
+pub fn puzzle_of(difficulty: Difficulty, seed: u64, attempts: u32) -> Option<Generated> {
+    (0..u64::from(attempts)).find_map(|i| {
+        let seed = seed.wrapping_add(i);
+        let (puzzle, solution) = minimal_puzzle(seed);
+        let grade = grade(&puzzle);
+        (grade.difficulty == difficulty).then_some(Generated {
+            seed,
+            puzzle,
+            solution,
+            grade,
+        })
+    })
 }
 
 #[cfg(test)]

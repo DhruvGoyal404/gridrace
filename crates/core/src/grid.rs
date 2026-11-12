@@ -62,6 +62,24 @@ pub const UNITS: [[u8; 9]; 27] = {
     units
 };
 
+/// The 20 cells sharing a row, column or box with each cell, in reading order.
+pub const PEERS: [[u8; 20]; 81] = {
+    let mut peers = [[0u8; 20]; 81];
+    let mut c = 0;
+    while c < 81 {
+        let (mut p, mut n) = (0, 0);
+        while p < 81 {
+            if are_peers(c, p) {
+                peers[c][n] = p as u8;
+                n += 1;
+            }
+            p += 1;
+        }
+        c += 1;
+    }
+    peers
+};
+
 impl Grid {
     pub const EMPTY: Grid = Grid([0; 81]);
 
@@ -163,6 +181,10 @@ mod tests {
         }
         assert!(seen.iter().all(|&n| n == 3));
         assert_eq!(UNITS[18 + 4], [30, 31, 32, 39, 40, 41, 48, 49, 50]);
+        for (c, ps) in PEERS.iter().enumerate() {
+            assert!(ps.iter().all(|&p| are_peers(c, p as usize)));
+        }
+        assert_eq!(PEERS[0][..10], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     }
 
     #[test]
