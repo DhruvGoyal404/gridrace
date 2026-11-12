@@ -16,7 +16,10 @@ a rule, change this file in its own commit and say why.
 | M4 | PWA, SEO, Lighthouse, Cloudflare Pages, e2e on the live site | |
 
 Docs: [README.md](README.md) (for interviewers), [docs/BENCHMARKS.md](docs/BENCHMARKS.md)
-(method and numbers), [docs/DEPENDENCY_EXCEPTIONS.md](docs/DEPENDENCY_EXCEPTIONS.md).
+(method and numbers), [docs/DEPENDENCY_EXCEPTIONS.md](docs/DEPENDENCY_EXCEPTIONS.md),
+[PRODUCT.md](PRODUCT.md) (users, purpose, principles), [DESIGN.md](DESIGN.md) (the UI's
+visual contract; `scripts/contrast.mjs` checks its colours), `.impeccable/surfaces/`
+(per-route direction contracts, development only: never shipped in the bundle).
 
 ## How we work
 

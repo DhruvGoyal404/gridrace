@@ -17,5 +17,6 @@ git diff --exit-code data/
 
 node --test scripts/*.test.mjs
 node scripts/check-workflows.mjs
+node scripts/contrast.mjs
 node scripts/check-deps.mjs . fuzz
 echo "gate: all green"
