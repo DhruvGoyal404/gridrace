@@ -20,7 +20,7 @@ export default tseslint.config(
   { files: ["scripts/**/*.mjs", "*.config.{js,ts}"], languageOptions: { globals: { ...globals.node } } },
   {
     // Playwright: fixtures call `use`, which isn't React's; page.evaluate bodies run in the browser.
-    files: ["e2e/**/*.ts", "scripts/shots.mjs"],
+    files: ["e2e/**/*.ts", "scripts/shots.mjs", "scripts/bench-browser.mjs"],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
     rules: { "react-hooks/rules-of-hooks": "off" },
   },

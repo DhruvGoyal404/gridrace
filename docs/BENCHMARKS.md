@@ -106,6 +106,76 @@ Hardest for brute force on adversarial.txt (6,267,154 nodes, 1.07 s):
 | adversarial.txt | mrv | 16.7 µs | 28.9 µs | 93.2 µs | 70 | 1 | 1,192 |
 | adversarial.txt | dlx | 38.4 µs | 56.3 µs | 119.4 µs | 69 | 1 | 1,913 |
 
+## In the browser
+
+The same corpus, the same four solvers compiled to WebAssembly, timed on the web app's
+Bench page (`/bench`) in headless Chromium against the production build, on the same
+laptop, 2026-11-13:
+
+```sh
+cd web && npm run build && npm run preview   # then, in another shell:
+node scripts/bench-browser.mjs                # prints this table
+```
+
+Browser: Chromium 156.0.8078.4 (headless), cross-origin isolated: true.
+
+| Set | Solver | Browser median | Browser p95 | Native median | Browser ÷ native |
+|---|---|---:|---:|---:|---:|
+| Easy (100) | BRT | 1.49 ms | 62.42 ms | 3.26 ms | 0.46× |
+| Easy (100) | BIT | 454.8 µs | 33.68 ms | 446.5 µs | 1.02× |
+| Easy (100) | MRV | 15.2 µs | 24.3 µs | 12.0 µs | 1.27× |
+| Easy (100) | DLX | 15.8 µs | 36.0 µs | 29.5 µs | 0.54× |
+| Medium (100) | BRT | 2.87 ms | 53.73 ms | 3.78 ms | 0.76× |
+| Medium (100) | BIT | 436.0 µs | 14.46 ms | 602.3 µs | 0.72× |
+| Medium (100) | MRV | 20.4 µs | 64.7 µs | 21.5 µs | 0.95× |
+| Medium (100) | DLX | 34.7 µs | 84.2 µs | 36.4 µs | 0.95× |
+| Hard (100) | BRT | 3.07 ms | 67.68 ms | 3.60 ms | 0.85× |
+| Hard (100) | BIT | 597.7 µs | 11.88 ms | 631.5 µs | 0.95× |
+| Hard (100) | MRV | 26.2 µs | 56.4 µs | 20.4 µs | 1.28× |
+| Hard (100) | DLX | 24.4 µs | 55.2 µs | 37.3 µs | 0.66× |
+| Expert (100) | BRT | 2.27 ms | 36.54 ms | 3.02 ms | 0.75× |
+| Expert (100) | BIT | 371.3 µs | 8.33 ms | 563.1 µs | 0.66× |
+| Expert (100) | MRV | 18.5 µs | 55.4 µs | 17.8 µs | 1.04× |
+| Expert (100) | DLX | 27.2 µs | 58.2 µs | 36.4 µs | 0.75× |
+| Master (100) | BRT | 2.55 ms | 54.54 ms | 4.06 ms | 0.63× |
+| Master (100) | BIT | 616.4 µs | 10.30 ms | 720.9 µs | 0.86× |
+| Master (100) | MRV | 22.7 µs | 65.8 µs | 26.5 µs | 0.86× |
+| Master (100) | DLX | 37.9 µs | 88.0 µs | 47.3 µs | 0.80× |
+| Beyond (100) | BRT | 2.97 ms | 21.55 ms | 4.64 ms | 0.64× |
+| Beyond (100) | BIT | 589.8 µs | 4.69 ms | 755.6 µs | 0.78× |
+| Beyond (100) | MRV | 27.0 µs | 77.7 µs | 30.0 µs | 0.90× |
+| Beyond (100) | DLX | 30.3 µs | 79.5 µs | 55.0 µs | 0.55× |
+| hardest.txt (50) | BRT | 5.01 ms | 106.30 ms | 8.99 ms | 0.56× |
+| hardest.txt (50) | BIT | 1.29 ms | 36.73 ms | 1.25 ms | 1.03× |
+| hardest.txt (50) | MRV | 203.9 µs | 711.9 µs | 220.4 µs | 0.93× |
+| hardest.txt (50) | DLX | 199.1 µs | 491.9 µs | 272.2 µs | 0.73× |
+| adversarial.txt (20) | BRT | 204.29 ms | 612.97 ms | 308.38 ms | 0.66× |
+| adversarial.txt (20) | BIT | 28.46 ms | 131.10 ms | 53.40 ms | 0.53× |
+| adversarial.txt (20) | MRV | 10.8 µs | 20.3 µs | 16.7 µs | 0.65× |
+| adversarial.txt (20) | DLX | 17.2 µs | 35.7 µs | 38.4 µs | 0.45× |
+
+**These two columns are not a like-for-like race, and the ratio is not a WebAssembly
+speed-up.** The methods differ in three ways, all in the browser's favour:
+
+- The browser repeats each puzzle until the batch takes at least 10 ms and reports the
+  mean; caches and the allocator are warm after the first solve. The native bench takes
+  the fastest of 3 to 5 single solves, each building its state from scratch, which is
+  why DLX (which allocates its matrix per solve) gains the most.
+- The native run was pinned to one performance core; the browser run was not, and
+  Windows may have given it a less loaded core or more turbo headroom at that moment.
+- They ran in different sessions, and this laptop drifts by tens of percent as it heats.
+
+What the table does show:
+
+- WebAssembly in the browser lands in the same range as native code: 0.45× to 1.28× of
+  the native medians across all 32 rows.
+- The big gaps hold. Bitmask is 3.3× to 7.2× faster than brute force in every set, and
+  MRV and DLX are two to three orders of magnitude faster than both.
+- MRV and DLX trade places. Natively MRV wins every set; in the browser DLX is faster on
+  Hard (24.4 vs 26.2 µs) and hardest.txt (199 vs 204 µs). Batching amortises DLX's
+  per-solve matrix allocation, the cost profiling found in its setup (see "DLX tuning"),
+  which is consistent with DLX gaining the most from the browser's method.
+
 ## What the numbers say
 
 - **Human difficulty is not machine difficulty.** From Easy to Beyond, MRV's mean nodes

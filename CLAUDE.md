@@ -12,8 +12,8 @@ a rule, change this file in its own commit and say why.
 |---|---|---|
 | M1 | Rust core: four solvers, counters, traces, generator, tests, fuzzing, benchmarks | done |
 | M2 | Human-style solver, hints that explain why, difficulty grading, graded corpus | done |
-| M3 | Web app: DESIGN.md first, play, race with replay, hints, generator, paste | in progress |
-| M4 | PWA, SEO, Lighthouse, Cloudflare Pages, e2e on the live site | |
+| M3 | Web app: DESIGN.md first, play, race with replay, hints, generator, paste, bench | done |
+| M4 | PWA, SEO, Lighthouse, Cloudflare Pages, e2e on the live site | next |
 
 Docs: [README.md](README.md) (for interviewers), [docs/BENCHMARKS.md](docs/BENCHMARKS.md)
 (method and numbers), [docs/DEPENDENCY_EXCEPTIONS.md](docs/DEPENDENCY_EXCEPTIONS.md),
@@ -82,6 +82,9 @@ visual contract; `scripts/contrast.mjs` checks its colours), `.impeccable/surfac
 
 ## Testing and CI
 
+- Web: Vitest units, Playwright e2e against the production build on desktop and a
+  390 px phone, axe (WCAG 2.1 AA) in both themes, and any console error fails a test.
+  `node web/scripts/shots.mjs` captures review screenshots into `.review/` (ignored).
 - CI (`.github/workflows/ci.yml`): policy scripts, gitleaks, fmt, clippy pedantic
   `-D warnings`, tests, wasm32 build, bench compile, corpus check, cargo-deny, and
   2 minutes of fuzzing on nightly-2026-10-28.

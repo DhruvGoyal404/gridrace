@@ -10,9 +10,22 @@ measured side by side.
 The solver core is Rust compiled to WebAssembly, running in a Web Worker. Everything runs
 in the browser: no backend, no accounts, no server costs.
 
-> **Status:** M1 (Rust core) and M2 (human-style solver, explained hints, graded
-> generator) are done. The web app (M3) and deployment to `gridrace.dhruvgoyal.tech`
-> (M4) are next.
+> **Status:** the Rust core (M1), the human-style solver with graded generation (M2) and
+> the web app (M3: Race, Play, Bench) are done. Deployment to `gridrace.dhruvgoyal.tech`
+> with offline support (M4) is next. Until then: `cd web && npm ci && npm run wasm && npm run dev`.
+
+## The web app
+
+- **Race**: four workers, one per solver, race on the same puzzle. Each lane shows its
+  status, time per solve (measured without the trace), nodes, backtracks and checks;
+  choose a lane to replay its search on the board with split-flap arrivals, at any speed,
+  step by step.
+- **Play**: notes, undo and redo, an opt-in mistakes check, a timer, and a hint ladder
+  that reveals as little as needed: the technique, where to look, why, then the move.
+- **Bench**: the benchmark corpus timed in your browser next to the native medians
+  ([docs/BENCHMARKS.md](docs/BENCHMARKS.md#in-the-browser) explains why the two methods
+  aren't a like-for-like race).
+- Light and dark boards, keyboard-playable, axe-clean (WCAG 2.1 AA) on desktop and phone.
 
 ## The four solvers
 

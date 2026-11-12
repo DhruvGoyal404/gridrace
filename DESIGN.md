@@ -4,8 +4,9 @@ The race is a departure board. Four solvers are four departures from one puzzle,
 with a code, a live status and its numbers, and every digit arrives in the grid with a
 split-flap turn. This file is the visual contract for the web app (`web/`). Product facts
 live in [PRODUCT.md](PRODUCT.md); the route strategy lives in
-`.impeccable/surfaces/`. Written before the build at the owner's request; refreshed from
-the built app at the end of M3.
+`.impeccable/surfaces/`. Written before the build at the owner's request and refreshed
+from the built app at the end of M3; where the two differed, this file now says what
+shipped.
 
 ## Principles
 
@@ -87,8 +88,9 @@ dialogs, nothing round except the status dot.
 
 ## Layout
 
-- **Top bar** (56 px): wordmark GRIDRACE in board digits, nav Race / Play / Generate /
-  Bench as standard links with an underline for the current route, Paste, theme toggle.
+- **Top bar** (56 px): the wordmark GRIDRACE as eight dark flap tiles, nav Race / Play /
+  Bench as standard links with a 3 px signal underline on the current route, Paste,
+  theme toggle. Generating lives in each screen's tier picker, not in the nav.
 - **Race** (desktop ≥ 1024 px): board and its transport in the left column, the departure
   board (four lanes) and the puzzle picker in the right column, the headline above both.
   Below the fold, the explainer: four registered plates, one per solver, with idea,
@@ -107,16 +109,25 @@ dialogs, nothing round except the status dot.
 - **Hint highlight**: pattern cells get a 2 px signal outline; the placement cell gets a
   signal plate with `--on-signal` digit; eliminated pencil marks are struck through in
   `--danger`.
-- **Lane** (departure row): code plate in the solver's series hue (text `--on-signal` on
-  Night is replaced by the hue as text on `--panel`), solver name, status, time, nodes,
-  backtracks, checks, and a budget bar (nodes used of the node limit, trace events of the
-  cap). Status words and forms: `BOARDING` (dashed rule, waiting), `SEARCHING` (blinking
+- **Lane** (departure row, a radio in a radiogroup: the chosen lane is replayed): the
+  code in its series hue, or on a signal plate when chosen; solver name; a node bar on a
+  log scale whose full width is the node limit (the budget, drawn on one shared axis so
+  lanes compare); status; time; nodes, backtracks and checks. No coloured side borders. Status words and forms: `BOARDING` (dashed rule, waiting), `SEARCHING` (blinking
   dot), `ARRIVED` (solid rule), `GAVE UP` (struck, `--danger`, with the limit it hit).
 - **Buttons**: primary is a yellow plate with black text (both themes); secondary is a
   1 px `--ink` outline; ghost is text with an underline on hover. 40 px tall, 44 px touch
   target on touch devices.
 - **Tier chips**: a radio group (Easy, Medium, Hard, Expert, Master, Beyond); selected
   is a filled ink plate with `--panel` text.
+- **Digit pad** (Play): nine plain buttons under the board, each disabled once all nine
+  copies are placed; they enter notes while notes mode is on.
+- **Hint ladder** (Play): four rungs, Technique, Where to look, Why, Apply, shown as
+  plates that fill in as the player climbs. Rung 2 washes the house in signal, rung 3
+  outlines the pattern, strikes eliminated notes and plates the target cell, rung 4
+  applies the move as one undoable step. A hint goes stale the moment the board changes.
+- **Notes** are drawn with CSS (`::before` from `data-note`), because the cell's
+  accessible name already lists them; visible text that differed from the name failed
+  WCAG 2.5.3.
 - **Transport**: step back, play/pause, step forward, speed (0.5×, 1×, 4×, 16×, max), a
   range scrubber over trace events, and the line "Trace capped at N events" when capped.
 - **Dialog** (Paste): native `<dialog>`, a textarea, live validation message (invalid
@@ -138,15 +149,25 @@ dialogs, nothing round except the status dot.
 ## Accessibility
 
 - WCAG 2.1 AA, checked with axe in the e2e suite.
-- Board keyboard model: arrow keys move, 1 to 9 enter, 0 / Backspace / Delete clear,
-  `P` toggles pencil mode, `H` asks for a hint, Home / End jump within a row. Roving
-  tabindex: the board is one tab stop.
+- Board keyboard model: arrow keys move (wrapping), 1 to 9 enter, 0 / Backspace / Delete
+  clear, `N` or `P` toggles notes, `H` climbs the hint ladder, Home / End jump within a
+  row. Ctrl+Z / Ctrl+Y (and Ctrl+Shift+Z) undo and redo anywhere on the Play page except
+  inside a text field. Roving tabindex: the board is one tab stop.
 - Each cell's accessible name is "row 4, column 6, 7" or "row 4, column 6, empty,
   candidates 2 5 8". Race status and hint text are announced through a polite live
   region; per-step replay is not announced (too chatty) but the scrubber reports its
   position.
 - Focus is always visible: 2 px `--focus` ring with 2 px offset.
 - Touch targets at least 44 px on touch devices.
+
+## Implementation notes
+
+- Custom CSS sits in `@layer base` and `@layer components`, so a Tailwind utility on an
+  element always wins. Unlayered rules once overrode utilities and hid the wordmark.
+- No `style` attributes in HTML (the CSP is `style-src 'self'`); React's `style` prop is
+  set through the CSSOM and is allowed.
+- The split-flap line sits behind the glyphs (`z-index`), so it shows only between
+  strokes and never reads as a strikethrough.
 
 ## Don'ts
 

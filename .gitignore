@@ -33,3 +33,6 @@ Thumbs.db
 # Tooling output
 .claude/
 graphify-out/
+
+# Local review screenshots (web/scripts/shots.mjs)
+/.review/
