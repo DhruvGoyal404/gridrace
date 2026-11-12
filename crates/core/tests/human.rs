@@ -207,6 +207,136 @@ fn xy_wing_removes_z_from_cells_seeing_both_pincers() {
 }
 
 #[test]
+fn skyscraper_on_two_rows_sharing_a_column() {
+    let mut b = open_board();
+    // 6 in row 2 only at c3, c5; in row 7 only at c3, c6. The c3 ends share column 3.
+    remove(
+        &mut b,
+        (1..=9).filter(|c| ![3, 5].contains(c)).map(|c| rc(2, c)),
+        6,
+    );
+    remove(
+        &mut b,
+        (1..=9).filter(|c| ![3, 6].contains(c)).map(|c| rc(7, c)),
+        6,
+    );
+    let step = b.find(Technique::Skyscraper).unwrap();
+    assert_eq!(
+        elims(&step),
+        vec![(rc(1, 6), 6), (rc(3, 6), 6), (rc(8, 5), 6), (rc(9, 5), 6)]
+    );
+    assert_eq!(
+        step.explanation,
+        "Skyscraper: in row 2, 6 fits only in r2c3 and r2c5; in row 7, only in r7c3 and r7c6. r2c3 and r7c3 share column 3, so at most one of them is 6. Then r2c5 or r7c6 must be 6, so this removes 6 from r1c6, r3c6, r8c5 and r9c5."
+    );
+}
+
+#[test]
+fn two_string_kite_joined_in_a_box() {
+    let mut b = open_board();
+    // 4 in row 3 only at c2, c7; in column 1 only at r1, r6. r3c2 and r1c1 share box 1.
+    remove(
+        &mut b,
+        (1..=9).filter(|c| ![2, 7].contains(c)).map(|c| rc(3, c)),
+        4,
+    );
+    remove(
+        &mut b,
+        (1..=9).filter(|r| ![1, 6].contains(r)).map(|r| rc(r, 1)),
+        4,
+    );
+    assert_eq!(b.find(Technique::Skyscraper), None);
+    let step = b.find(Technique::TwoStringKite).unwrap();
+    assert_eq!(step.eliminate, vec![(rc(6, 7), 4)]);
+    assert!(
+        step.explanation
+            .contains("share box 1, so at most one of them is 4")
+    );
+}
+
+#[test]
+fn w_wing_through_a_strong_link() {
+    let mut b = open_board();
+    b.cands[rc(1, 1) as usize] = bit(3) | bit(8);
+    b.cands[rc(5, 9) as usize] = bit(3) | bit(8);
+    // 3 in row 7 only at r7c1 (sees r1c1) and r7c9 (sees r5c9).
+    remove(&mut b, (2..=8).map(|c| rc(7, c)), 3);
+    let step = b.find(Technique::WWing).unwrap();
+    assert_eq!(elims(&step), vec![(rc(1, 9), 8), (rc(5, 1), 8)]);
+    assert_eq!(
+        step.explanation,
+        "W-Wing: r1c1 and r5c9 can only be 3 and 8. In row 7, 3 fits only in r7c1 and r7c9, which see one each. If r1c1 isn't 8 it is 3, so r7c1 isn't 3, so r7c9 is 3, so r5c9 isn't 3: it's 8. One of them is 8, so it removes 8 from r1c9 and r5c1."
+    );
+}
+
+#[test]
+fn unique_rectangle_type_1() {
+    let mut b = open_board();
+    // Rows 1-2, columns 1 and 4: boxes 1 and 2. Three corners hold only 1 or 6.
+    for cell in [rc(1, 1), rc(1, 4), rc(2, 1)] {
+        b.cands[cell as usize] = bit(1) | bit(6);
+    }
+    let step = b.find(Technique::UniqueRectangle).unwrap();
+    assert_eq!(step.eliminate, vec![(rc(2, 4), 1), (rc(2, 4), 6)]);
+    assert_eq!(
+        step.explanation,
+        "Unique rectangle: r1c1, r1c4 and r2c1 can only be 1 or 6. If r2c4 were also only 1 or 6, the four cells could swap their 1s and 6s and the puzzle would have two solutions. It has one, so this removes 1 from r2c4; 6 from r2c4."
+    );
+    // Three boxes' worth of corners (rows in two bands, columns in two stacks): no rectangle.
+    let mut b = open_board();
+    for cell in [rc(1, 1), rc(1, 4), rc(5, 1)] {
+        b.cands[cell as usize] = bit(1) | bit(6);
+    }
+    assert_eq!(b.find(Technique::UniqueRectangle), None);
+}
+
+#[test]
+fn x_chain_of_five_links() {
+    let mut b = open_board();
+    // 7 is a strong link only in rows 1, 4 and 8:
+    // r1c1 = r1c5 - r4c5 = r4c9 - r8c9 = r8c2
+    for (r, keep) in [(1, [1, 5]), (4, [5, 9]), (8, [9, 2])] {
+        remove(
+            &mut b,
+            (1..=9).filter(|c| !keep.contains(c)).map(|c| rc(r, c)),
+            7,
+        );
+    }
+    let step = b.find(Technique::XChain).unwrap();
+    assert_eq!(step.cells.len(), 6, "{}", step.explanation);
+    assert_eq!(
+        elims(&step),
+        vec![(rc(2, 2), 7), (rc(3, 2), 7), (rc(7, 1), 7), (rc(9, 1), 7)]
+    );
+    assert!(step.explanation.starts_with("X-Chain on 7: If r1c1 isn't 7, r1c5 is (the only other 7 in row 1), so r4c5 isn't (it sees r1c5), r4c9 is (the only other 7 in row 4)"), "{}", step.explanation);
+}
+
+#[test]
+fn xy_chain_of_four_cells() {
+    let mut b = open_board();
+    // r1c1 {1,2} - r1c6 {2,3} - r5c6 {3,4} - r5c2 {4,1}: one end is 1.
+    for (cell, ds) in [
+        (rc(1, 1), [1, 2]),
+        (rc(1, 6), [2, 3]),
+        (rc(5, 6), [3, 4]),
+        (rc(5, 2), [4, 1]),
+    ] {
+        b.cands[cell as usize] = bit(ds[0]) | bit(ds[1]);
+    }
+    let step = b.find(Technique::XYChain).unwrap();
+    let mut expected: Vec<(u8, u8)> = [(1, 2), (2, 2), (3, 2), (4, 1), (5, 1), (6, 1)]
+        .iter()
+        .map(|&(r, c)| (rc(r, c), 1))
+        .collect();
+    expected.sort_unstable();
+    assert_eq!(elims(&step), expected);
+    assert_eq!(
+        step.explanation,
+        "XY-Chain: If r1c1 isn't 1, it is 2; then r1c6 isn't 2, so it is 3; then r5c6 isn't 3, so it is 4; then r5c2 isn't 4, so it is 1. So r1c1 or r5c2 is 1, and this removes 1 from r1c2, r2c2, r3c2, r4c1, r5c1 and r6c1."
+    );
+}
+
+#[test]
 fn the_classic_is_easy() {
     let p = Grid::parse(CLASSIC).unwrap();
     let g = grade(&p);
@@ -233,8 +363,8 @@ fn assert_sound(steps: &[Step], solution: &Grid, ctx: &str) {
 
 #[test]
 fn property_every_step_is_sound_and_every_technique_occurs() {
-    let mut used = [0u32; 11];
-    let mut tiers = [0u32; 5];
+    let mut used = [0u32; Technique::COUNT];
+    let mut tiers = [0u32; 6];
     for seed in 0..400 {
         let (p, solution) = minimal_puzzle(seed);
         let logical = solve_logically(&p);

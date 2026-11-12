@@ -13,15 +13,18 @@ committed ones, so the corpus can't drift from the code.
 
 | File | Puzzles | What it is |
 |---|---:|---|
-| [data/graded.txt](../data/graded.txt) | 500 | The first 100 puzzles of each difficulty tier among `generate::minimal_puzzle(seed)`, seeds 0 to 19,999. Minimal: every clue is necessary. 21 to 28 givens. |
-| [data/hardest.txt](../data/hardest.txt) | 50 | Built to be hard for the smart solvers. Start from the 50 Beyond-tier puzzles of the sweep that cost MRV + DLX the most nodes, then hill-climb: empty a clue, add clues from the same solution until it's unique, minimise, and keep the move only if the puzzle stays Beyond and costs MRV + DLX more nodes. 200 moves per puzzle. Raised the top cost from 2,754 to 6,888 nodes. |
+| [data/graded.txt](../data/graded.txt) | 600 | The first 100 puzzles of each difficulty tier among `generate::minimal_puzzle(seed)`, seeds 0 to 19,999. Minimal: every clue is necessary. 21 to 28 givens. |
+| [data/hardest.txt](../data/hardest.txt) | 50 | Built to be hard for the smart solvers. Start from the 50 Beyond-tier puzzles of the sweep that cost MRV + DLX the most nodes, then hill-climb: empty a clue, add clues from the same solution until it's unique, minimise, and keep the move only if the puzzle stays Beyond and costs MRV + DLX more nodes. 200 moves per puzzle. Raised the top cost from 2,287 to 6,888 nodes. |
 | [data/adversarial.txt](../data/adversarial.txt) | 20 | Built to be hard for brute force: puzzles relabelled so the solution's first row reads `987654321`, so brute force's first guess in every first-row cell is wrong. The 20 worst among seeds 0 to 499. |
 
 **Tiers.** A puzzle's tier is the hardest technique an easiest-first human-style solve
 needs ([human.rs](../crates/core/src/human.rs)): Easy (singles), Medium (pointing,
 box-line reduction), Hard (naked and hidden pairs, X-Wing), Expert (triples, Swordfish,
-XY-Wing), Beyond (needs more than these: chains or guessing). Share among the 20,000
-swept minimal puzzles: Easy 41.5%, Medium 11.9%, Hard 6.5%, Expert 4.9%, Beyond 35.1%.
+Skyscraper, 2-String Kite, W-Wing, XY-Wing, unique rectangle), Master (X-Chain,
+XY-Chain), Beyond (needs more than these: longer mixed chains, or guessing). Share among
+the 20,000 swept minimal puzzles: Easy 41.5%, Medium 11.9%, Hard 6.5%, Expert 16.2%,
+Master 7.9%, Beyond 15.9%. With the first eleven techniques only, Beyond was 35.1% and
+Expert 4.9%.
 
 ## Method
 
@@ -44,96 +47,89 @@ powershell -File scripts/bench.ps1 > bench.md   # builds, then runs the bench pi
 ## Results
 
 Intel Core i5-1235U (12th gen, 2 P-cores + 8 E-cores), 16 GB, Windows 11, on mains power,
-Rust 1.99.1, `lto = true`, `codegen-units = 1`. Measured 2026-11-12, one session.
+Rust 1.99.1, `lto = true`, `codegen-units = 1`. Measured 2026-11-12, one session, after the
+chain and uniqueness techniques were added (they change the tiers and hardest.txt).
 
-### Median time by tier, and mean nodes
+### Median time by set, and mean nodes
 
 | Set | brute | bitmask | mrv | dlx |
 |---|---:|---:|---:|---:|
-| Easy | 3.17 ms (164,517) | 423 µs (164,517) | 10.3 µs (56) | 28.1 µs (56) |
-| Medium | 3.33 ms (127,129) | 610 µs (127,129) | 21.4 µs (76) | 36.6 µs (78) |
-| Hard | 3.72 ms (155,159) | 486 µs (155,159) | 16.6 µs (80) | 59.3 µs (83) |
-| Expert | 2.57 ms (83,813) | 373 µs (83,813) | 16.3 µs (76) | 50.8 µs (80) |
-| Beyond | 2.55 ms (57,244) | 348 µs (57,244) | 20.2 µs (102) | 39.9 µs (112) |
-| **hardest.txt** | 8.70 ms (258,445) | 1.43 ms (258,445) | 159 µs (882) | 256 µs (1,033) |
-| **adversarial.txt** | 246 ms (2,390,310) | 34.8 ms (2,390,310) | 11.0 µs (70) | 33.2 µs (69) |
+| Easy | 3.26 ms (164,517) | 446.5 µs (164,517) | 12.0 µs (56) | 29.5 µs (56) |
+| Medium | 3.78 ms (127,129) | 602.3 µs (127,129) | 21.5 µs (76) | 36.4 µs (78) |
+| Hard | 3.60 ms (155,159) | 631.5 µs (155,159) | 20.4 µs (80) | 37.3 µs (83) |
+| Expert | 3.02 ms (89,317) | 563.1 µs (89,317) | 17.8 µs (78) | 36.4 µs (83) |
+| Master | 4.06 ms (95,983) | 720.9 µs (95,983) | 26.5 µs (84) | 47.3 µs (85) |
+| Beyond | 4.64 ms (53,651) | 755.6 µs (53,651) | 30.0 µs (103) | 55.0 µs (114) |
+| **hardest.txt** | 8.99 ms (194,314) | 1.25 ms (194,314) | 220.4 µs (701) | 272.2 µs (799) |
+| **adversarial.txt** | 308.38 ms (2,390,310) | 53.40 ms (2,390,310) | 16.7 µs (70) | 38.4 µs (69) |
 
-### hardest.txt (50 puzzles)
-
-| Solver | Median | p95 | Max | Mean nodes | Mean backtracks | Mean checks |
-|---|---:|---:|---:|---:|---:|---:|
-| brute | 8.70 ms | 223.76 ms | 289.23 ms | 258,445 | 258,388 | 2,325,781 |
-| bitmask | 1.43 ms | 33.98 ms | 47.37 ms | 258,445 | 258,388 | 258,445 |
-| mrv | 159.0 µs | 799.6 µs | 1.09 ms | 882 | 89 | 21,628 |
-| dlx | 255.9 µs | 972.7 µs | 1.10 ms | 1,033 | 89 | 21,545 |
-
-Hardest for MRV: 3,439 nodes, 1.09 ms:
+Hardest for MRV and DLX on hardest.txt (3,439 and 3,449 nodes, 1.27 and 1.52 ms):
 `..34...2.5..2...6....3....9.....18.4....3.9..1.7......86..45........9.....26.....`
 
-Hardest for DLX: 3,323 nodes, 1.10 ms:
-`.69..........6.54......3.....1..4.........69.49.3...177....9..5..82...71......3..`
-
-### adversarial.txt (20 puzzles)
-
-| Solver | Median | p95 | Max | Mean nodes | Mean backtracks | Mean checks |
-|---|---:|---:|---:|---:|---:|---:|
-| brute | 246.06 ms | 641.86 ms | 875.32 ms | 2,390,310 | 2,390,253 | 21,512,568 |
-| bitmask | 34.79 ms | 108.40 ms | 137.27 ms | 2,390,310 | 2,390,253 | 2,390,310 |
-| mrv | 11.0 µs | 17.2 µs | 60.6 µs | 70 | 1 | 1,192 |
-| dlx | 33.2 µs | 51.6 µs | 106.8 µs | 69 | 1 | 1,913 |
-
-Hardest for brute force: 6,267,154 nodes, 875 ms:
+Hardest for brute force on adversarial.txt (6,267,154 nodes, 1.07 s):
 `9..65...1..1......5....3.9.....7.......2....74.5....8.3.9.....27..56.4....8.9....`
 
-### Per tier, in full
+### Every set, in full
 
-| Tier | Solver | Median | p95 | Max | Mean nodes | Mean backtracks | Mean checks |
+| Set | Solver | Median | p95 | Max | Mean nodes | Mean backtracks | Mean checks |
 |---|---|---:|---:|---:|---:|---:|---:|
-| Easy | brute | 3.17 ms | 122.94 ms | 615.67 ms | 164,517 | 164,460 | 1,480,427 |
-| Easy | bitmask | 423.4 µs | 20.92 ms | 121.50 ms | 164,517 | 164,460 | 164,517 |
-| Easy | mrv | 10.3 µs | 16.4 µs | 19.2 µs | 56 | 0 | 646 |
-| Easy | dlx | 28.1 µs | 36.1 µs | 37.2 µs | 56 | 0 | 1,393 |
-| Medium | brute | 3.33 ms | 71.13 ms | 755.45 ms | 127,129 | 127,073 | 1,143,942 |
-| Medium | bitmask | 610.0 µs | 13.01 ms | 136.12 ms | 127,129 | 127,073 | 127,129 |
-| Medium | mrv | 21.4 µs | 37.8 µs | 205.4 µs | 76 | 1 | 1,655 |
-| Medium | dlx | 36.6 µs | 64.5 µs | 254.9 µs | 78 | 1 | 2,337 |
-| Hard | brute | 3.72 ms | 76.35 ms | 753.09 ms | 155,159 | 155,102 | 1,396,209 |
-| Hard | bitmask | 485.8 µs | 11.24 ms | 131.65 ms | 155,159 | 155,102 | 155,159 |
-| Hard | mrv | 16.6 µs | 43.4 µs | 56.6 µs | 80 | 2 | 1,839 |
-| Hard | dlx | 59.3 µs | 100.2 µs | 124.8 µs | 83 | 2 | 2,496 |
-| Expert | brute | 2.57 ms | 32.44 ms | 310.33 ms | 83,813 | 83,756 | 754,091 |
-| Expert | bitmask | 373.2 µs | 5.43 ms | 53.26 ms | 83,813 | 83,756 | 83,813 |
-| Expert | mrv | 16.3 µs | 39.1 µs | 111.8 µs | 76 | 1 | 1,409 |
-| Expert | dlx | 50.8 µs | 78.4 µs | 125.6 µs | 80 | 1 | 2,108 |
-| Beyond | brute | 2.55 ms | 33.55 ms | 94.47 ms | 57,244 | 57,187 | 514,974 |
-| Beyond | bitmask | 347.6 µs | 5.23 ms | 14.92 ms | 57,244 | 57,187 | 57,244 |
-| Beyond | mrv | 20.2 µs | 45.3 µs | 219.6 µs | 102 | 3 | 2,224 |
-| Beyond | dlx | 39.9 µs | 83.2 µs | 372.0 µs | 112 | 3 | 2,831 |
+| Easy | brute | 3.26 ms | 129.40 ms | 594.58 ms | 164,517 | 164,460 | 1,480,427 |
+| Easy | bitmask | 446.5 µs | 23.72 ms | 120.34 ms | 164,517 | 164,460 | 164,517 |
+| Easy | mrv | 12.0 µs | 17.7 µs | 19.2 µs | 56 | 0 | 646 |
+| Easy | dlx | 29.5 µs | 35.9 µs | 41.4 µs | 56 | 0 | 1,393 |
+| Medium | brute | 3.78 ms | 73.95 ms | 700.22 ms | 127,129 | 127,073 | 1,143,942 |
+| Medium | bitmask | 602.3 µs | 14.16 ms | 150.32 ms | 127,129 | 127,073 | 127,129 |
+| Medium | mrv | 21.5 µs | 39.5 µs | 192.2 µs | 76 | 1 | 1,655 |
+| Medium | dlx | 36.4 µs | 64.5 µs | 284.8 µs | 78 | 1 | 2,337 |
+| Hard | brute | 3.60 ms | 77.72 ms | 814.77 ms | 155,159 | 155,102 | 1,396,209 |
+| Hard | bitmask | 631.5 µs | 12.86 ms | 162.26 ms | 155,159 | 155,102 | 155,159 |
+| Hard | mrv | 20.4 µs | 46.6 µs | 81.0 µs | 80 | 2 | 1,839 |
+| Hard | dlx | 37.3 µs | 71.2 µs | 104.1 µs | 83 | 2 | 2,496 |
+| Expert | brute | 3.02 ms | 48.41 ms | 370.05 ms | 89,317 | 89,260 | 803,630 |
+| Expert | bitmask | 563.1 µs | 8.74 ms | 75.38 ms | 89,317 | 89,260 | 89,317 |
+| Expert | mrv | 17.8 µs | 48.6 µs | 88.4 µs | 78 | 1 | 1,450 |
+| Expert | dlx | 36.4 µs | 79.7 µs | 117.9 µs | 83 | 1 | 2,169 |
+| Master | brute | 4.06 ms | 57.52 ms | 422.22 ms | 95,983 | 95,927 | 863,627 |
+| Master | bitmask | 720.9 µs | 11.58 ms | 84.23 ms | 95,983 | 95,927 | 95,983 |
+| Master | mrv | 26.5 µs | 51.3 µs | 151.2 µs | 84 | 2 | 1,623 |
+| Master | dlx | 47.3 µs | 74.6 µs | 127.5 µs | 85 | 2 | 2,215 |
+| Beyond | brute | 4.64 ms | 36.01 ms | 50.08 ms | 53,651 | 53,594 | 482,636 |
+| Beyond | bitmask | 755.6 µs | 6.49 ms | 8.06 ms | 53,651 | 53,594 | 53,651 |
+| Beyond | mrv | 30.0 µs | 79.6 µs | 250.3 µs | 103 | 3 | 2,370 |
+| Beyond | dlx | 55.0 µs | 115.7 µs | 455.6 µs | 114 | 3 | 2,994 |
+| hardest.txt | brute | 8.99 ms | 220.61 ms | 411.02 ms | 194,314 | 194,257 | 1,748,601 |
+| hardest.txt | bitmask | 1.25 ms | 41.63 ms | 76.61 ms | 194,314 | 194,257 | 194,314 |
+| hardest.txt | mrv | 220.4 µs | 661.0 µs | 1.27 ms | 701 | 64 | 16,722 |
+| hardest.txt | dlx | 272.2 µs | 741.8 µs | 1.52 ms | 799 | 64 | 16,940 |
+| adversarial.txt | brute | 308.38 ms | 787.37 ms | 1.07 s | 2,390,310 | 2,390,253 | 21,512,568 |
+| adversarial.txt | bitmask | 53.40 ms | 174.59 ms | 215.84 ms | 2,390,310 | 2,390,253 | 2,390,310 |
+| adversarial.txt | mrv | 16.7 µs | 28.9 µs | 93.2 µs | 70 | 1 | 1,192 |
+| adversarial.txt | dlx | 38.4 µs | 56.3 µs | 119.4 µs | 69 | 1 | 1,913 |
 
 ## What the numbers say
 
 - **Human difficulty is not machine difficulty.** From Easy to Beyond, MRV's mean nodes
-  only go from 56 to 102, and brute force has no trend at all (its Easy tier is its
-  costliest). A person is slowed by needing a rarer pattern; a search is slowed by
-  guesses that propagate badly, and by digit order for brute force. Grading by technique
-  is right for players; benchmarking needs sets built against the solvers, which is why
-  hardest.txt and adversarial.txt exist.
+  only go from 56 to 103, and brute force has no trend at all (its Easy tier is its
+  costliest, Beyond its cheapest). A person is slowed by needing a rarer pattern; a
+  search is slowed by guesses that propagate badly, and by digit order for brute force.
+  Grading by technique is right for players; benchmarking needs sets built against the
+  solvers, which is why hardest.txt and adversarial.txt exist.
 - **Bitmask vs brute force: same tree, cheaper checks.** Node and backtrack counts are
   identical (a test asserts it); one mask operation per cell replaces nine 27-cell scans.
-  5.5 to 7.7× faster at the median in every set.
-- **MRV + propagation: a smaller tree.** 56 to 102 nodes against 57,000 to 165,000 for
+  5.4 to 7.3× faster at the median in every set.
+- **MRV + propagation: a smaller tree.** 56 to 103 nodes against 54,000 to 165,000 for
   brute force on the graded tiers, because naked and hidden singles settle most cells
   without guessing and the branch is taken where the fewest candidates remain. Two to
   three orders of magnitude faster.
 - **Digit order is brute force's weakness, not the others'.** On adversarial.txt brute
-  force's median is 66 to 97× its graded medians; MRV and DLX don't change.
+  force's median is 66 to 102× its graded medians; MRV and DLX don't change.
 - **On the hardest puzzles DLX nearly catches MRV.** On the graded tiers DLX takes 1.7
-  to 3.6× MRV's median: its per-node pointer work costs more while propagation settles
-  most cells for free. On hardest.txt, where both must search (89 backtracks), DLX is
-  1.6× MRV's median, 1.2× its p95, and equal at the max. DLX is the general exact-cover
-  algorithm: the same code solves pentominoes or N-queens once the columns change.
-  Sudoku-specific propagation beats it on easy ground and the gap closes as the search
-  gets real.
+  to 2.5× MRV's median: its per-node pointer work costs more while propagation settles
+  most cells for free. On hardest.txt, where both must search (64 backtracks on
+  average), DLX is 1.24× MRV's median, 1.12× its p95 and 1.2× its max. DLX is the
+  general exact-cover algorithm: the same code solves pentominoes or N-queens once the
+  columns change. Sudoku-specific propagation beats it on easy ground, and the gap
+  closes as the search gets real.
 
 ## DLX tuning (2026-11-12)
 

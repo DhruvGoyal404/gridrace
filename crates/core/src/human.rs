@@ -2,17 +2,25 @@
 //! (each step says why) and grading (a puzzle is as hard as the hardest technique an
 //! easiest-first solve needs, not as hard as its number of empty cells).
 //!
-//! The technique order follows Sudoku Explainer's original ratings (in brackets), read
-//! from the `getDifficulty()` methods in its maintained fork Sukaku Explainer
-//! (github.com/SudokuMonster/SukakuExplainer, `diuf/sudoku/solver/rules/*Hint.java`):
-//! hidden single (1.2 in a box, 1.5 in a line), naked single (2.3), pointing (2.6),
-//! box-line reduction, called claiming there (2.8), naked pair (3.0), X-Wing (3.2),
-//! hidden pair (3.4), naked triple (3.6), Swordfish (3.8), hidden triple (4.0),
-//! XY-Wing (4.2). Only the numbers are used; no code comes from it.
+//! The order follows Sudoku Explainer's ratings, read from the `getDifficulty()` methods
+//! in its maintained fork Sukaku Explainer (github.com/SudokuMonster/SukakuExplainer,
+//! `diuf/sudoku/solver/rules/`). Original SE ratings: hidden single 1.2 in a box / 1.5 in a
+//! line, naked single 2.3, pointing 2.6, box-line reduction (claiming) 2.8, naked pair
+//! 3.0, X-Wing 3.2, hidden pair 3.4, naked triple 3.6, Swordfish 3.8, hidden triple 4.0,
+//! XY-Wing 4.2, unique rectangle 4.5 (`unique/UniqueLoopHint.java`), forcing X-Chain 6.6
+//! and forcing chain mixing cell and unit links (our XY-Chain) 7.0, plus a length bonus
+//! (`chaining/ForcingChainHint.java`). Skyscraper 4.0 and 2-String Kite 4.1 are Sukaku's
+//! additions (`TurbotFishHint.java`). SE has no W-Wing; `HoDoKu` (`sudoku/Options.java`)
+//! searches it between 2-String Kite and XY-Wing and scores it like the Kite, so it sits
+//! there. Only the numbers and order are used; no code comes from either project.
+//!
+//! Unique Rectangle assumes the puzzle has exactly one solution. Generated puzzles do, and
+//! `hint` checks before solving; on a puzzle with several solutions its steps can be wrong.
 
 use crate::grid::PEERS;
 use crate::solvers::digits;
-use crate::{Grid, UNITS, box_of, col, row};
+use crate::{Grid, UNITS, are_peers, box_of, col, row};
+use std::collections::VecDeque;
 use std::fmt::Write as _;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -27,11 +35,19 @@ pub enum Technique {
     NakedTriple,
     Swordfish,
     HiddenTriple,
+    Skyscraper,
+    TwoStringKite,
+    WWing,
     XYWing,
+    UniqueRectangle,
+    XChain,
+    XYChain,
 }
 
 impl Technique {
-    pub const ALL: [Technique; 11] = [
+    pub const COUNT: usize = 17;
+
+    pub const ALL: [Technique; Self::COUNT] = [
         Self::HiddenSingle,
         Self::NakedSingle,
         Self::Pointing,
@@ -42,7 +58,13 @@ impl Technique {
         Self::NakedTriple,
         Self::Swordfish,
         Self::HiddenTriple,
+        Self::Skyscraper,
+        Self::TwoStringKite,
+        Self::WWing,
         Self::XYWing,
+        Self::UniqueRectangle,
+        Self::XChain,
+        Self::XYChain,
     ];
 
     pub const fn name(self) -> &'static str {
@@ -57,7 +79,35 @@ impl Technique {
             Self::NakedTriple => "Naked triple",
             Self::Swordfish => "Swordfish",
             Self::HiddenTriple => "Hidden triple",
+            Self::Skyscraper => "Skyscraper",
+            Self::TwoStringKite => "2-String Kite",
+            Self::WWing => "W-Wing",
             Self::XYWing => "XY-Wing",
+            Self::UniqueRectangle => "Unique rectangle",
+            Self::XChain => "X-Chain",
+            Self::XYChain => "XY-Chain",
+        }
+    }
+
+    /// The rating the order comes from (see the module docs); "-" where SE has none.
+    pub const fn rating(self) -> &'static str {
+        match self {
+            Self::HiddenSingle => "1.2/1.5",
+            Self::NakedSingle => "2.3",
+            Self::Pointing => "2.6",
+            Self::BoxLineReduction => "2.8",
+            Self::NakedPair => "3.0",
+            Self::XWing => "3.2",
+            Self::HiddenPair => "3.4",
+            Self::NakedTriple => "3.6",
+            Self::Swordfish => "3.8",
+            Self::HiddenTriple | Self::Skyscraper => "4.0",
+            Self::TwoStringKite => "4.1",
+            Self::WWing => "-",
+            Self::XYWing => "4.2",
+            Self::UniqueRectangle => "4.5",
+            Self::XChain => "6.6+",
+            Self::XYChain => "7.0+",
         }
     }
 
@@ -66,9 +116,15 @@ impl Technique {
             Self::HiddenSingle | Self::NakedSingle => Difficulty::Easy,
             Self::Pointing | Self::BoxLineReduction => Difficulty::Medium,
             Self::NakedPair | Self::XWing | Self::HiddenPair => Difficulty::Hard,
-            Self::NakedTriple | Self::Swordfish | Self::HiddenTriple | Self::XYWing => {
-                Difficulty::Expert
-            }
+            Self::NakedTriple
+            | Self::Swordfish
+            | Self::HiddenTriple
+            | Self::Skyscraper
+            | Self::TwoStringKite
+            | Self::WWing
+            | Self::XYWing
+            | Self::UniqueRectangle => Difficulty::Expert,
+            Self::XChain | Self::XYChain => Difficulty::Master,
         }
     }
 }
@@ -81,15 +137,17 @@ pub enum Difficulty {
     Medium,
     Hard,
     Expert,
+    Master,
     Beyond,
 }
 
 impl Difficulty {
-    pub const ALL: [Difficulty; 5] = [
+    pub const ALL: [Difficulty; 6] = [
         Self::Easy,
         Self::Medium,
         Self::Hard,
         Self::Expert,
+        Self::Master,
         Self::Beyond,
     ];
 
@@ -99,6 +157,7 @@ impl Difficulty {
             Self::Medium => "Medium",
             Self::Hard => "Hard",
             Self::Expert => "Expert",
+            Self::Master => "Master",
             Self::Beyond => "Beyond",
         }
     }
@@ -267,6 +326,11 @@ impl Board {
             Technique::XWing => self.fish(2, t),
             Technique::Swordfish => self.fish(3, t),
             Technique::XYWing => self.xy_wing(),
+            Technique::Skyscraper | Technique::TwoStringKite => self.turbot(t),
+            Technique::WWing => self.w_wing(),
+            Technique::UniqueRectangle => self.unique_rectangle(),
+            Technique::XChain => self.x_chain(),
+            Technique::XYChain => self.xy_chain(),
         }
     }
 
@@ -631,6 +695,451 @@ impl Board {
     }
 }
 
+/// A chain found by a search: its cells, one detail per link or cell, eliminations, digit.
+type Found<T> = (Vec<u8>, Vec<T>, Vec<(u8, u8)>, u8);
+
+/// Longest chain searched, in links. Shortest chains are found first (breadth-first), so
+/// this only bounds the work when no chain exists.
+const MAX_CHAIN_LINKS: usize = 15;
+
+impl Board {
+    /// Pairs of cells that are the only two spots for `d` in some unit: a strong link,
+    /// one of the two must be `d`. Each pair once, with the first unit that makes it.
+    fn conjugates(&self, d: u8, units: std::ops::Range<usize>) -> Vec<(u8, u8, usize)> {
+        let mut out: Vec<(u8, u8, usize)> = Vec::new();
+        for unit in units {
+            if let [a, b] = self.spots(unit, d)[..]
+                && !out.iter().any(|&(x, y, _)| (x, y) == (a, b))
+            {
+                out.push((a, b, unit));
+            }
+        }
+        out
+    }
+
+    /// `(cell, d)` for each cell with candidate `d` that sees both `a` and `b`.
+    fn seeing_both(&self, a: u8, b: u8, d: u8) -> Vec<(u8, u8)> {
+        (0..81u8)
+            .filter(|&c| {
+                c != a
+                    && c != b
+                    && self.cands[c as usize] & bit(d) != 0
+                    && are_peers(c as usize, a as usize)
+                    && are_peers(c as usize, b as usize)
+            })
+            .map(|c| (c, d))
+            .collect()
+    }
+
+    /// Skyscraper (two rows, or two columns) and 2-String Kite (a row and a column): two
+    /// strong links on one digit whose near ends see each other, so they can't both be the
+    /// digit. Then one of the far ends is, and cells seeing both far ends can't be.
+    fn turbot(&self, t: Technique) -> Option<Step> {
+        for d in 1..=9 {
+            let links = self.conjugates(d, 0..18);
+            for (i, &(p1, p2, u)) in links.iter().enumerate() {
+                for &(q1, q2, v) in &links[i + 1..] {
+                    let parallel = (u < 9) == (v < 9);
+                    if parallel != (t == Technique::Skyscraper) {
+                        continue;
+                    }
+                    for (near1, far1) in [(p1, p2), (p2, p1)] {
+                        for (near2, far2) in [(q1, q2), (q2, q1)] {
+                            let cells = [near1, far1, near2, far2];
+                            let distinct = (0..4).all(|x| (x + 1..4).all(|y| cells[x] != cells[y]));
+                            let (n1, n2) = (near1 as usize, near2 as usize);
+                            let joined = if parallel {
+                                // The near ends share the cross line; the far ends don't.
+                                // Far ends on one cross line would be an X-Wing.
+                                let (f1, f2) = (far1 as usize, far2 as usize);
+                                if u < 9 {
+                                    col(n1) == col(n2) && col(f1) != col(f2)
+                                } else {
+                                    row(n1) == row(n2) && row(f1) != row(f2)
+                                }
+                            } else {
+                                box_of(n1) == box_of(n2)
+                            };
+                            if !distinct || !joined {
+                                continue;
+                            }
+                            let elims = self.seeing_both(far1, far2, d);
+                            if elims.is_empty() {
+                                continue;
+                            }
+                            let link = if parallel {
+                                format!(
+                                    "share {}",
+                                    if u < 9 {
+                                        unit_name(9 + col(n1))
+                                    } else {
+                                        unit_name(row(n1))
+                                    }
+                                )
+                            } else {
+                                format!("share {}", unit_name(18 + box_of(n1)))
+                            };
+                            return Some(Step {
+                                technique: t,
+                                place: None,
+                                explanation: format!(
+                                    "{}: in {}, {d} fits only in {} and {}; in {}, only in {} and {}. {} and {} {link}, so at most one of them is {d}. Then {} or {} must be {d}, so this {}.",
+                                    t.name(),
+                                    unit_name(u),
+                                    cell_name(near1 as usize),
+                                    cell_name(far1 as usize),
+                                    unit_name(v),
+                                    cell_name(near2 as usize),
+                                    cell_name(far2 as usize),
+                                    cell_name(n1),
+                                    cell_name(n2),
+                                    cell_name(far1 as usize),
+                                    cell_name(far2 as usize),
+                                    elimination_text(&elims),
+                                ),
+                                eliminate: elims,
+                                cells: cells.to_vec(),
+                                digits: bit(d),
+                                unit: None,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Two cells with the same two candidates {x, y} that don't see each other, joined by
+    /// a strong link on x (each end of the link sees one of them). If the first isn't y it
+    /// is x, so its end of the link isn't x, so the other end is, so the second isn't x:
+    /// it's y. One of the two is y, so cells seeing both can't be.
+    fn w_wing(&self) -> Option<Step> {
+        let bivalue: Vec<usize> = (0..81)
+            .filter(|&c| self.cands[c].count_ones() == 2)
+            .collect();
+        for (i, &a) in bivalue.iter().enumerate() {
+            for &b in &bivalue[i + 1..] {
+                let pair = self.cands[a];
+                if self.cands[b] != pair || are_peers(a, b) {
+                    continue;
+                }
+                for x in digits(pair) {
+                    let y = digits(pair & !bit(x)).next().expect("two candidates");
+                    for (c, e, unit) in self.conjugates(x, 0..27) {
+                        let (c, e) = (c as usize, e as usize);
+                        let ends = if are_peers(c, a) && are_peers(e, b) {
+                            (c, e)
+                        } else if are_peers(e, a) && are_peers(c, b) {
+                            (e, c)
+                        } else {
+                            continue;
+                        };
+                        if [a, b].contains(&c) || [a, b].contains(&e) {
+                            continue;
+                        }
+                        let elims = self.seeing_both(a as u8, b as u8, y);
+                        if elims.is_empty() {
+                            continue;
+                        }
+                        return Some(Step {
+                            technique: Technique::WWing,
+                            place: None,
+                            explanation: format!(
+                                "W-Wing: {} and {} can only be {}. In {}, {x} fits only in {} and {}, which see one each. If {} isn't {y} it is {x}, so {} isn't {x}, so {} is {x}, so {} isn't {x}: it's {y}. One of them is {y}, so it {}.",
+                                cell_name(a),
+                                cell_name(b),
+                                digit_list(pair),
+                                unit_name(unit),
+                                cell_name(ends.0),
+                                cell_name(ends.1),
+                                cell_name(a),
+                                cell_name(ends.0),
+                                cell_name(ends.1),
+                                cell_name(b),
+                                elimination_text(&elims),
+                            ),
+                            eliminate: elims,
+                            cells: vec![a as u8, b as u8, ends.0 as u8, ends.1 as u8],
+                            digits: pair,
+                            unit: Some(unit as u8),
+                        });
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Four cells on two rows, two columns and two boxes, three of them holding only
+    /// {x, y}. If the fourth could also be only x or y, the x's and y's could be swapped
+    /// and the puzzle would have two solutions. It has one, so the fourth is neither.
+    fn unique_rectangle(&self) -> Option<Step> {
+        for r1 in 0..9 {
+            for r2 in r1 + 1..9 {
+                for c1 in 0..9 {
+                    for c2 in c1 + 1..9 {
+                        let corners = [r1 * 9 + c1, r1 * 9 + c2, r2 * 9 + c1, r2 * 9 + c2];
+                        let same_band = r1 / 3 == r2 / 3;
+                        let same_stack = c1 / 3 == c2 / 3;
+                        if same_band == same_stack || corners.iter().any(|&c| self.cells[c] != 0) {
+                            continue; // must span exactly two boxes, all four cells open
+                        }
+                        for (k, &odd) in corners.iter().enumerate() {
+                            let rest: Vec<usize> = corners
+                                .iter()
+                                .enumerate()
+                                .filter(|&(j, _)| j != k)
+                                .map(|(_, &c)| c)
+                                .collect();
+                            let pair = self.cands[rest[0]];
+                            if pair.count_ones() != 2
+                                || rest.iter().any(|&c| self.cands[c] != pair)
+                                || self.cands[odd] & pair != pair
+                                || self.cands[odd] == pair
+                            {
+                                continue;
+                            }
+                            let elims: Vec<(u8, u8)> =
+                                digits(pair).map(|d| (odd as u8, d)).collect();
+                            let (x, y) = (elims[0].1, elims[1].1);
+                            return Some(Step {
+                                technique: Technique::UniqueRectangle,
+                                place: None,
+                                explanation: format!(
+                                    "Unique rectangle: {} can only be {x} or {y}. If {} were also only {x} or {y}, the four cells could swap their {x}s and {y}s and the puzzle would have two solutions. It has one, so this {}.",
+                                    cell_list(&rest.iter().map(|&c| c as u8).collect::<Vec<_>>()),
+                                    cell_name(odd),
+                                    elimination_text(&elims),
+                                ),
+                                eliminate: elims,
+                                cells: corners.iter().map(|&c| c as u8).collect(),
+                                digits: pair,
+                                unit: None,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// X-Chain on one digit: strong and weak links alternate, starting and ending strong.
+    /// "If the first cell isn't d, the next is (only two in that unit), so the next isn't
+    /// (they see each other)..." ends at "the last cell is d". So one end is d, and cells
+    /// seeing both ends can't be. The shortest chain with an elimination is reported.
+    fn x_chain(&self) -> Option<Step> {
+        // (cells, strong-link units, eliminations, digit)
+        let mut best: Option<Found<usize>> = None;
+        for d in 1..=9 {
+            let mut strong: Vec<Vec<(u8, usize)>> = vec![Vec::new(); 81];
+            for (a, b, unit) in self.conjugates(d, 0..27) {
+                strong[a as usize].push((b, unit));
+                strong[b as usize].push((a, unit));
+            }
+            let with_d: Vec<u8> = (0..81u8)
+                .filter(|&c| self.cands[c as usize] & bit(d) != 0)
+                .collect();
+            for &start in &with_d {
+                // State: (cell, arrived by a strong link). prev holds the parent and the unit.
+                let mut prev: Vec<Option<(usize, usize)>> = vec![None; 162];
+                let mut depth = vec![usize::MAX; 162];
+                let mut queue = VecDeque::new();
+                for &(n, unit) in &strong[start as usize] {
+                    let s = n as usize * 2 + 1;
+                    if depth[s] == usize::MAX {
+                        depth[s] = 1;
+                        prev[s] = Some((start as usize * 2, unit));
+                        queue.push_back(s);
+                    }
+                }
+                while let Some(s) = queue.pop_front() {
+                    let (cell, by_strong) = (s / 2, s % 2 == 1);
+                    if depth[s] >= MAX_CHAIN_LINKS
+                        || best.as_ref().is_some_and(|b| b.0.len() - 1 <= depth[s])
+                    {
+                        continue;
+                    }
+                    if by_strong && depth[s] >= 3 && cell != start as usize {
+                        let elims = self.seeing_both(start, cell as u8, d);
+                        if !elims.is_empty() {
+                            let (cells, units) = path(&prev, s, start as usize * 2);
+                            if is_simple(&cells) {
+                                best = Some((cells, units, elims, d));
+                                continue;
+                            }
+                        }
+                    }
+                    let next: Vec<(u8, usize)> = if by_strong {
+                        with_d
+                            .iter()
+                            .filter(|&&n| are_peers(cell, n as usize))
+                            .map(|&n| (n, usize::MAX))
+                            .collect()
+                    } else {
+                        strong[cell].clone()
+                    };
+                    for (n, unit) in next {
+                        let t = n as usize * 2 + usize::from(!by_strong);
+                        if depth[t] == usize::MAX {
+                            depth[t] = depth[s] + 1;
+                            prev[t] = Some((s, unit));
+                            queue.push_back(t);
+                        }
+                    }
+                }
+            }
+        }
+        let (cells, units, elims, d) = best?;
+        let mut why = format!("If {} isn't {d}", cell_name(cells[0] as usize));
+        for (i, pair) in cells.windows(2).enumerate() {
+            let next = cell_name(pair[1] as usize);
+            if i % 2 == 0 {
+                let _ = write!(
+                    why,
+                    ", {next} is (the only other {d} in {})",
+                    unit_name(units[i])
+                );
+            } else {
+                let _ = write!(
+                    why,
+                    ", so {next} isn't (it sees {})",
+                    cell_name(pair[0] as usize)
+                );
+            }
+        }
+        let (first, last) = (cells[0] as usize, *cells.last().unwrap() as usize);
+        Some(Step {
+            technique: Technique::XChain,
+            place: None,
+            explanation: format!(
+                "X-Chain on {d}: {why}. So {} or {} is {d}, and this {}.",
+                cell_name(first),
+                cell_name(last),
+                elimination_text(&elims),
+            ),
+            eliminate: elims,
+            cells,
+            digits: bit(d),
+            unit: None,
+        })
+    }
+
+    /// XY-Chain through cells with two candidates: "if the first isn't z it is a, so the
+    /// next (a peer holding a) isn't a and is b, ..." until a cell that must be z. One end
+    /// is z, so cells seeing both ends can't be. The shortest such chain is reported.
+    fn xy_chain(&self) -> Option<Step> {
+        let bivalue = |c: usize| self.cands[c].count_ones() == 2;
+        // (cells, digit each cell must be, eliminations, z)
+        let mut best: Option<Found<u8>> = None;
+        for start in (0..81).filter(|&c| bivalue(c)) {
+            for z in digits(self.cands[start]) {
+                // State: (cell, the digit it must then be). prev holds the parent state.
+                let state = |c: usize, d: u8| c * 9 + d as usize - 1;
+                let mut prev: Vec<Option<usize>> = vec![None; 729];
+                let mut depth = vec![usize::MAX; 729];
+                let on = digits(self.cands[start] & !bit(z))
+                    .next()
+                    .expect("two candidates");
+                let s0 = state(start, on);
+                depth[s0] = 0;
+                let mut queue = VecDeque::from([s0]);
+                while let Some(s) = queue.pop_front() {
+                    let (cell, d) = (s / 9, (s % 9) as u8 + 1);
+                    if depth[s] >= MAX_CHAIN_LINKS
+                        || best.as_ref().is_some_and(|b| b.0.len() <= depth[s] + 1)
+                    {
+                        continue;
+                    }
+                    if d == z && depth[s] >= 2 {
+                        let elims = self.seeing_both(start as u8, cell as u8, z);
+                        if !elims.is_empty() {
+                            let mut states = vec![s];
+                            while let Some(p) = prev[*states.last().unwrap()] {
+                                states.push(p);
+                            }
+                            states.reverse();
+                            let cells: Vec<u8> = states.iter().map(|&x| (x / 9) as u8).collect();
+                            if is_simple(&cells) {
+                                let ons = states.iter().map(|&x| (x % 9) as u8 + 1).collect();
+                                best = Some((cells, ons, elims, z));
+                                continue;
+                            }
+                        }
+                    }
+                    for n in PEERS[cell].iter().map(|&p| p as usize) {
+                        if bivalue(n) && self.cands[n] & bit(d) != 0 {
+                            let next_on = digits(self.cands[n] & !bit(d))
+                                .next()
+                                .expect("two candidates");
+                            let t = state(n, next_on);
+                            if depth[t] == usize::MAX {
+                                depth[t] = depth[s] + 1;
+                                prev[t] = Some(s);
+                                queue.push_back(t);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        let (cells, ons, elims, z) = best?;
+        let mut why = format!(
+            "If {} isn't {z}, it is {}",
+            cell_name(cells[0] as usize),
+            ons[0]
+        );
+        for i in 1..cells.len() {
+            let _ = write!(
+                why,
+                "; then {} isn't {}, so it is {}",
+                cell_name(cells[i] as usize),
+                ons[i - 1],
+                ons[i]
+            );
+        }
+        let (first, last) = (cells[0] as usize, *cells.last().unwrap() as usize);
+        let digits_mask = cells.iter().fold(0, |m, &c| m | self.cands[c as usize]);
+        Some(Step {
+            technique: Technique::XYChain,
+            place: None,
+            explanation: format!(
+                "XY-Chain: {why}. So {} or {} is {z}, and this {}.",
+                cell_name(first),
+                cell_name(last),
+                elimination_text(&elims),
+            ),
+            eliminate: elims,
+            cells,
+            digits: digits_mask,
+            unit: None,
+        })
+    }
+}
+
+/// Cells and strong-link units along an X-Chain, start first.
+fn path(prev: &[Option<(usize, usize)>], end: usize, start: usize) -> (Vec<u8>, Vec<usize>) {
+    let (mut cells, mut units) = (vec![(end / 2) as u8], Vec::new());
+    let mut s = end;
+    while s != start {
+        let (p, unit) = prev[s].expect("every reached state has a parent");
+        units.push(unit);
+        cells.push((p / 2) as u8);
+        s = p;
+    }
+    cells.reverse();
+    units.reverse();
+    (cells, units)
+}
+
+fn is_simple(cells: &[u8]) -> bool {
+    cells
+        .iter()
+        .enumerate()
+        .all(|(i, c)| !cells[i + 1..].contains(c))
+}
+
 /// All k-element index combinations of `0..n`, in lexicographic order.
 fn combinations(n: usize, k: usize) -> Vec<Vec<usize>> {
     fn go(start: usize, n: usize, k: usize, cur: &mut Vec<usize>, out: &mut Vec<Vec<usize>>) {
@@ -679,7 +1188,7 @@ pub struct Grade {
     /// The hardest technique used; `None` if nothing was left to do.
     pub hardest: Option<Technique>,
     /// How many times each technique was used, in `Technique::ALL` order.
-    pub uses: [u32; 11],
+    pub uses: [u32; Technique::COUNT],
     pub steps: usize,
 }
 
@@ -687,7 +1196,7 @@ pub struct Grade {
 /// puzzles with one solution; `Beyond` when the techniques run out.
 pub fn grade(grid: &Grid) -> Grade {
     let logical = solve_logically(grid);
-    let mut uses = [0u32; 11];
+    let mut uses = [0u32; Technique::COUNT];
     for s in &logical.steps {
         uses[s.technique as usize] += 1;
     }

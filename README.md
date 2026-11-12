@@ -30,17 +30,17 @@ has every tier, p95, max, the method and the hardest puzzles).
 
 | # | Solver | Idea | Per-node cost | Easy: median (nodes) | Hardest: median (nodes) |
 |---|---|---|---|---:|---:|
-| 1 | [Brute force](crates/core/src/solvers/brute.rs) | First empty cell, try 1 to 9, scan row, column and box for each digit | 9 digits × 27 reads | 3.17 ms (164,517) | 8.70 ms (258,445) |
-| 2 | [Bitmask](crates/core/src/solvers/bitmask.rs) | Same search; a 9-bit mask per row, column and box gives all legal digits in one `!(r \| c \| b)` | O(1) | 423 µs (164,517) | 1.43 ms (258,445) |
-| 3 | [MRV + propagation](crates/core/src/solvers/mrv.rs) | After each guess, place naked and hidden singles until nothing changes; branch on the cell with fewest candidates | O(81) per propagation pass | 10.3 µs (56) | 159 µs (882) |
-| 4 | [Dancing Links](crates/core/src/solvers/dlx.rs) | Knuth's Algorithm X on the 729 × 324 exact-cover matrix; cover and uncover are O(1) pointer splices | O(columns) to choose, O(1) per link | 28.1 µs (56) | 256 µs (1,033) |
+| 1 | [Brute force](crates/core/src/solvers/brute.rs) | First empty cell, try 1 to 9, scan row, column and box for each digit | 9 digits × 27 reads | 3.26 ms (164,517) | 8.99 ms (194,314) |
+| 2 | [Bitmask](crates/core/src/solvers/bitmask.rs) | Same search; a 9-bit mask per row, column and box gives all legal digits in one `!(r \| c \| b)` | O(1) | 447 µs (164,517) | 1.25 ms (194,314) |
+| 3 | [MRV + propagation](crates/core/src/solvers/mrv.rs) | After each guess, place naked and hidden singles until nothing changes; branch on the cell with fewest candidates | O(81) per propagation pass | 12.0 µs (56) | 220 µs (701) |
+| 4 | [Dancing Links](crates/core/src/solvers/dlx.rs) | Knuth's Algorithm X on the 729 × 324 exact-cover matrix; cover and uncover are O(1) pointer splices | O(columns) to choose, O(1) per link | 29.5 µs (56) | 272 µs (799) |
 
 All four are exponential in the worst case: generalised Sudoku is NP-complete. What
 changes is the size of the tree and the cost of each node.
 
 **1 → 2: cheaper checks, same tree.** Bitmask visits exactly the same nodes as brute
 force (a test asserts it); only the cost of asking "is this digit legal?" drops from a
-27-cell scan per digit to one mask operation per cell. 5.5 to 7.7× faster.
+27-cell scan per digit to one mask operation per cell. 5.4 to 7.3× faster.
 
 **2 → 3: a smaller tree.** Constraint propagation fills most cells without guessing,
 and choosing the most constrained cell (minimum remaining values) keeps the branching
@@ -50,20 +50,20 @@ factor near 2. Hundreds to thousands of times fewer nodes.
 (each cell filled; each digit once per row, column and box), 729 candidate placements,
 pick placements covering every constraint exactly once. Algorithm X picks the
 constraint with fewest options, which is MRV and hidden singles in one rule. On easy
-ground DLX takes 1.7 to 3.6× MRV's median: propagation settles most cells for free while
+ground DLX takes 1.7 to 2.5× MRV's median: propagation settles most cells for free while
 DLX pays pointer work per node. On the hardest set, where both must really search, the
-gap closes to 1.6× at the median and nothing at the max. Profiling showed 40% of DLX's
+gap closes to 1.24× at the median and 1.2× at the max. Profiling showed 40% of DLX's
 time went into building the matrix; [docs/BENCHMARKS.md](docs/BENCHMARKS.md#dlx-tuning-2026-11-12)
 records what changed and the before/after ratios. The same code solves any exact-cover
 problem.
 
 **Adversarial puzzles.** Relabelling a puzzle's digits so its first row reads
 `987654321` makes brute force's first guess wrong in every first-row cell. On the
-20 worst such puzzles brute force's median is 246 ms; MRV and DLX don't care (11 µs and
-33 µs), because they don't depend on digit order.
+20 worst such puzzles brute force's median is 308 ms; MRV and DLX don't care (17 µs and
+38 µs), because they don't depend on digit order.
 
 **Human difficulty is not machine difficulty.** From Easy to Beyond, MRV's mean nodes
-only rise from 56 to 102, and brute force is costliest on the Easy tier. That's why the
+only rise from 56 to 103, and brute force is costliest on the Easy tier. That's why the
 benchmark has sets built against the solvers, not only graded ones.
 
 ## Traces and replay
@@ -76,7 +76,7 @@ trace from the puzzle and checks it ends on the solution.
 ## Human-style solver and hints
 
 [human.rs](crates/core/src/human.rs) solves the way a person does: pencil marks, then the
-easiest technique that makes progress. Eleven techniques, in the order of Sudoku
+easiest technique that makes progress. Seventeen techniques, in the order of Sudoku
 Explainer's difficulty ratings (read from its source, cited in the file):
 
 | Rating | Technique | What it does |
@@ -91,7 +91,19 @@ Explainer's difficulty ratings (read from its source, cited in the file):
 | 3.6 | Naked triple | Three cells hold only three digits between them |
 | 3.8 | Swordfish | X-Wing over three rows and three columns |
 | 4.0 | Hidden triple | Three digits fit in only the same three cells |
+| 4.0 | Skyscraper | Two parallel strong links on a digit whose near ends share a line: one far end holds it |
+| 4.1 | 2-String Kite | A row and a column strong link joined in a box: one far end holds the digit |
+| - | W-Wing | Two identical two-candidate cells joined by a strong link: one of them is the other digit |
 | 4.2 | XY-Wing | A two-candidate pivot and two pincers force a third digit out of shared peers |
+| 4.5 | Unique rectangle | Three corners hold only {x, y}: the fourth can't, or the puzzle would have two solutions |
+| 6.6+ | X-Chain | Alternating strong and weak links on one digit: one end of the chain holds it |
+| 7.0+ | XY-Chain | A chain of two-candidate cells: one end must be the shared digit |
+
+Skyscraper and 2-String Kite are rated by Sukaku Explainer, SE's maintained fork. SE
+doesn't rate W-Wing; it sits where HoDoKu, the other widely used rated solver, searches
+it: after the Kite, before XY-Wing. Unique rectangle relies on the puzzle having exactly
+one solution, which generated puzzles do and hints check first. Chains are found
+breadth-first, so a hint shows the shortest chain that works.
 
 Every step carries the cells and digits of its pattern (for highlighting) and an
 explanation, for example:
@@ -101,6 +113,11 @@ explanation, for example:
 > XY-Wing: r1c1 is 1 or 2. If 1, r1c5 must be 3; if 2, r5c1 must be 3. Either way one
 > of them is 3, so it removes 3 from r5c5.
 
+> X-Chain on 7: If r1c1 isn't 7, r1c5 is (the only other 7 in row 1), so r4c5 isn't (it
+> sees r1c5), r4c9 is (the only other 7 in row 4), so r8c9 isn't (it sees r4c9), r8c2 is
+> (the only other 7 in row 8). So r1c1 or r8c2 is 7, and this removes 7 from r2c2, r3c2,
+> r7c1 and r9c1.
+
 **Hints** check, in order: clashing digits, whether the puzzle has exactly one solution,
 entries that differ from it, then the deductions leading to the next placement. Steps
 the placement doesn't need are pruned, so a hint is a short chain ending in "place this
@@ -109,8 +126,22 @@ fewest candidates and says so.
 
 **Grading** uses the hardest technique an easiest-first solve needs, not the number of
 empty cells: Easy (singles), Medium (pointing, box-line), Hard (pairs, X-Wing), Expert
-(triples, Swordfish, XY-Wing), Beyond (needs chains or guessing). Over 20,000 generated
-minimal puzzles: Easy 41.5%, Medium 11.9%, Hard 6.5%, Expert 4.9%, Beyond 35.1%.
+(triples, Swordfish, Skyscraper, Kite, W-Wing, XY-Wing, unique rectangle), Master
+(X-Chain, XY-Chain), Beyond (needs more than these: longer mixed chains, or guessing).
+
+Over 20,000 generated minimal puzzles:
+
+| Tier | Eleven techniques | Seventeen techniques |
+|---|---:|---:|
+| Easy | 41.5% | 41.5% |
+| Medium | 11.9% | 11.9% |
+| Hard | 6.5% | 6.5% |
+| Expert | 4.9% | 16.2% |
+| Master | - | 7.9% |
+| Beyond | 35.1% | **15.9%** |
+
+So about one puzzle in six still ends a hint with "here's a cell", against one in three
+before the chain and uniqueness techniques.
 
 ## Generator
 
