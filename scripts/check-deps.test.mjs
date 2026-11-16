@@ -13,6 +13,8 @@ import {
   rustItems,
   npmItems,
   npmPinErrors,
+  overrideErrors,
+  parseOverrides,
   parseAccepted,
   parseExceptions,
 } from "./check-deps.mjs";
@@ -249,4 +251,19 @@ test("the real command exits 1 on a young crate and on a lapsed exception, 0 whe
   assert.match(result.stderr, /exception expired on 2026-11-10/);
 
   assert.equal(runCli("", OLD).status, 0);
+});
+
+test("overrides must be recorded at their version, kept in sync, and expire", () => {
+  const doc = `${header}\n## Accepted advisories\n\n| Where | Package | Advisory | Recorded | Expires |\n|---|---|---|---|---|\n\n## Overrides\n\n| Where | Package | Version | Advisory | Recorded | Expires |\n|---|---|---|---|---|---|\n| web | minimatch | 11.0.3 | GHSA-g3hv-75wg-m249 | 2026-11-12 | 2026-12-31 |\n`;
+  const { rows, errors } = parseOverrides(doc);
+  assert.deepEqual(errors, []);
+  assert.equal(rows.length, 1);
+  assert.deepEqual(parseExceptions(doc).rows, [], "override rows are not young-release exceptions");
+  assert.deepEqual(parseAccepted(doc).rows, [], "nor accepted advisories");
+  assert.deepEqual(overrideErrors({ dir: "web", pkg: { overrides: { minimatch: "11.0.3" } }, recorded: rows }), []);
+  assert.match(overrideErrors({ dir: "web", pkg: { overrides: { minimatch: "11.0.4" } }, recorded: rows })[0], /is 11.0.4, the table says 11.0.3/);
+  assert.match(overrideErrors({ dir: "web", pkg: { overrides: { glob: "14.0.3", minimatch: "11.0.3" } }, recorded: rows })[0], /glob@14.0.3 is not recorded/);
+  assert.match(overrideErrors({ dir: "web", pkg: {}, recorded: rows })[0], /no longer exists/);
+  assert.match(expiredExceptions(rows, "2027-01-01T00:00:00Z")[0], /expired on 2026-12-31/);
+  assert.match(parseOverrides(doc.replace("11.0.3 |", "latest |")).errors[0], /can't read/);
 });

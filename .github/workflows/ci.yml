@@ -192,5 +192,5 @@ jobs:
       - name: Measure the live site (median of three runs per preset; see the job summary)
         working-directory: deploy
         # The runner's preinstalled Chrome; the URL is the one the deploy just updated.
-        run: node lighthouse.mjs https://gridrace.pages.dev/
+        run: node lighthouse.mjs https://gridrace.dhruvgoyal.tech/
 

@@ -23,12 +23,13 @@ const EXPIRY = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?(Z|[+-]\d{2}:\d{2}))?$/;
 const expiryTime = (expires) => new Date(expires.includes("T") ? expires : `${expires}T23:59:59Z`);
 
 const ACCEPTED = "## Accepted advisories";
+const OVERRIDES = "## Overrides";
 
 /** Reads the table. Anything that looks like a row but can't be read is an error. */
 export function parseExceptions(markdown) {
   const rows = [];
   const errors = [];
-  for (const line of markdown.split(ACCEPTED)[0].split("\n")) {
+  for (const line of markdown.split(ACCEPTED)[0].split(OVERRIDES)[0].split("\n")) {
     if (!line.startsWith("|") || /^\|[\s:|-]+\|?$/.test(line) || /^\|\s*Ecosystem\b/.test(line)) continue;
     const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
     const [ecosystem, name, version, , advisory, , expires] = cells;
@@ -45,7 +46,7 @@ export function parseExceptions(markdown) {
 export function parseAccepted(markdown) {
   const rows = [];
   const errors = [];
-  const section = markdown.split(ACCEPTED)[1] ?? "";
+  const section = (markdown.split(ACCEPTED)[1] ?? "").split(OVERRIDES)[0];
   for (const line of section.split("\n")) {
     if (!line.startsWith("|") || /^\|[\s:|-]+\|?$/.test(line) || /^\|\s*Where\b/.test(line)) continue;
     const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
@@ -79,6 +80,38 @@ export function auditErrors({ dir, audit, accepted }) {
   }
   for (const row of accepted.filter((r) => r.where === dir && !found.has(`${r.name} ${r.advisory}`))) {
     errors.push(`${dir}: ${row.name} ${row.advisory} no longer appears in npm audit; remove the accepted entry`);
+  }
+  return errors;
+}
+
+/** The overrides table: | Where | Package | Version | Advisory | Recorded | Expires |. */
+export function parseOverrides(markdown) {
+  const rows = [];
+  const errors = [];
+  for (const line of (markdown.split(OVERRIDES)[1] ?? "").split("\n")) {
+    if (!line.startsWith("|") || /^\|[\s:|-]+\|?$/.test(line) || /^\|\s*Where\b/.test(line)) continue;
+    const cells = line.split("|").slice(1, -1).map((cell) => cell.trim());
+    const [where, name, version, advisory, , expires] = cells;
+    if (cells.length !== 6 || !where || !name || !/^\d+\.\d+\.\d+$/.test(version ?? "") || !advisory || !EXPIRY.test(expires ?? "")) {
+      errors.push(`overrides table: can't read "${line}"`);
+      continue;
+    }
+    rows.push({ ecosystem: "npm", where, name, version, advisory, expires });
+  }
+  return { rows, errors };
+}
+
+/** Every npm override in a package.json must be recorded at that version, and every record must still exist. */
+export function overrideErrors({ dir, pkg, recorded }) {
+  const errors = [];
+  const actual = pkg.overrides ?? {};
+  for (const [name, version] of Object.entries(actual)) {
+    const row = recorded.find((r) => r.where === dir && r.name === name);
+    if (!row) errors.push(`${dir}: override ${name}@${version} is not recorded in the overrides table`);
+    else if (row.version !== version) errors.push(`${dir}: override ${name} is ${version}, the table says ${row.version}`);
+  }
+  for (const row of recorded.filter((r) => r.where === dir && !(r.name in actual))) {
+    errors.push(`${dir}: recorded override ${row.name} no longer exists; remove the row`);
   }
   return errors;
 }
@@ -244,7 +277,13 @@ async function main() {
   const markdown = readFileSync(exceptionsFile, "utf8");
   const { rows, errors: tableErrors } = parseExceptions(markdown);
   const { rows: accepted, errors: acceptedErrors } = parseAccepted(markdown);
-  const problems = [...tableErrors, ...acceptedErrors, ...expiredExceptions([...rows, ...accepted], now)];
+  const { rows: overrides, errors: overrideTableErrors } = parseOverrides(markdown);
+  const problems = [
+    ...tableErrors,
+    ...acceptedErrors,
+    ...overrideTableErrors,
+    ...expiredExceptions([...rows, ...accepted, ...overrides], now),
+  ];
 
   const checks = [];
   const workflows = readdirSync(".github/workflows").map((f) => readFileSync(join(".github/workflows", f), "utf8"));
@@ -255,7 +294,7 @@ async function main() {
       checks.push({ label: dir, items: cratesItems(readFileSync(join(dir, "Cargo.lock"), "utf8")) });
     } else {
       const pkg = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
-      problems.push(...npmPinErrors(pkg));
+      problems.push(...npmPinErrors(pkg), ...overrideErrors({ dir, pkg, recorded: overrides }));
       checks.push({ label: dir, items: npmItems(JSON.parse(readFileSync(join(dir, "package-lock.json"), "utf8"))), npmDir: dir });
     }
   }

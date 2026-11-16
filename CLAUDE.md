@@ -13,7 +13,7 @@ a rule, change this file in its own commit and say why.
 | M1 | Rust core: four solvers, counters, traces, generator, tests, fuzzing, benchmarks | done |
 | M2 | Human-style solver, hints that explain why, difficulty grading, graded corpus | done |
 | M3 | Web app: DESIGN.md first, play, race with replay, hints, generator, paste, bench | done |
-| M4 | PWA, SEO, Lighthouse, Cloudflare Pages, e2e on the live site | next |
+| M4 | PWA, SEO, Lighthouse, Cloudflare Pages, e2e on the live site | done |
 
 Docs: [README.md](README.md) (for interviewers), [docs/BENCHMARKS.md](docs/BENCHMARKS.md)
 (method and numbers), [docs/DEPENDENCY_EXCEPTIONS.md](docs/DEPENDENCY_EXCEPTIONS.md),
@@ -45,8 +45,9 @@ visual contract; `scripts/contrast.mjs` checks its colours), `.impeccable/surfac
 - **Exact pins.** Crates as `=x.y.z`, npm without `^` or `~`. Lockfiles committed.
   `--locked` / `npm ci` in CI. A too-new transitive crate is held back with
   `cargo update -p <crate> --precise <version>` (fuzz/: `cc` at 1.10.0; root: `itoa` 1.0.18,
-  `syn` 3.0.9). web/ forces minimatch 11.0.3 with an npm override (GHSA-g3hv-75wg-m249,
-  dev-only through eslint); drop it once eslint and typescript-eslint require a fixed range.
+  `syn` 3.0.9). npm `overrides` (web/ and deploy/ force fixed minimatch and glob releases
+  for two advisories) are recorded with expiry dates in docs/DEPENDENCY_EXCEPTIONS.md,
+  "Overrides"; check-deps fails on an unrecorded, mismatched or expired one.
 - **Clean audits.** `cargo deny check` (advisories, licences, sources) and `npm audit`.
 - **Security exception:** a fix for a published advisory may be younger than 14 days.
   Record it in docs/DEPENDENCY_EXCEPTIONS.md with the advisory, the date and an expiry.
@@ -117,9 +118,9 @@ up/down scripts; the README says so.
   runs per preset against the live site, median and range in the job summary. Targets:
   SEO, Accessibility, Best Practices 100; Performance >= 95 on the landing page. Local
   mobile runs on the dev laptop swing widely with its load; trust the CI median.
-- deploy/ overrides glob 14.0.3 and minimatch 11.0.3 (GHSA-3g3m-2fjr-6pw4,
-  GHSA-g3hv-75wg-m249, both through Lighthouse's error reporter); drop them once
-  Lighthouse's own ranges include fixed releases.
+- deploy/'s glob and minimatch overrides keep Lighthouse's error reporter off two
+  advisories; they hold only while the Lighthouse job keeps passing (see the overrides
+  table for their expiry).
 
 ## Environment
 
