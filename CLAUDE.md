@@ -112,6 +112,10 @@ up/down scripts; the README says so.
   suite runs on it, so a CSP regression fails locally before it ships.
 - Offline: `vite.config.ts` emits `sw.js` precaching every built file; the e2e suite
   reloads offline and plays.
+- Routes: the build writes `play.html`, `bench.html` (own title and canonical) and
+  `404.html` (`noindex`). With a top-level 404.html, Pages serves unknown paths with
+  status 404 instead of falling back to the app; `serve.mjs` matches this and an e2e test
+  checks the status. Adding a route means adding it to `ROUTES` and `routePages()`.
 - `web/scripts/assets.mjs` renders the icons and the OG image from HTML; rerun it when
   the brand or the quoted medians change.
 - After each deploy, CI's report-only Lighthouse job runs `deploy/lighthouse.mjs`: three

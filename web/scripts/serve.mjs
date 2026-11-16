@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Serves web/dist the way Cloudflare Pages will: the headers from dist/_headers, and
-// index.html for any path that isn't a file (single-page routes). The e2e suite runs
-// against this, so the strict CSP and cross-origin isolation are tested before deploy.
+// Serves web/dist the way Cloudflare Pages will: the headers from dist/_headers, a file if
+// one matches, then <path>.html (pretty URLs: /play -> play.html), and otherwise 404.html
+// with status 404. The e2e suite runs against this, so the strict CSP, cross-origin
+// isolation and the 404 page are tested before deploy.
 //
 //   node scripts/serve.mjs [port]
 import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
@@ -49,13 +50,25 @@ export function headersFor(rules, path) {
   return out;
 }
 
+const isFile = (f) => f.startsWith(dist) && existsSync(f) && statSync(f).isFile();
+
+/** The file Pages would serve for a path: exact file, index.html at /, <path>.html, else 404.html. */
+export function resolve(path) {
+  if (path === "/") return join(dist, "index.html");
+  const exact = normalize(join(dist, path));
+  if (isFile(exact)) return exact;
+  const pretty = normalize(join(dist, `${path.replace(/\/+$/, "")}.html`));
+  if (isFile(pretty)) return pretty;
+  return join(dist, "404.html");
+}
+
 if (process.argv[1]?.endsWith("serve.mjs")) {
   const rules = parseHeaders(readFileSync(join(dist, "_headers"), "utf8"));
   createServer((req, res) => {
     const path = decodeURIComponent(new URL(req.url, "http://x").pathname);
-    let file = normalize(join(dist, path));
-    if (!file.startsWith(dist) || !existsSync(file) || statSync(file).isDirectory()) file = join(dist, "index.html");
-    res.writeHead(200, { "Content-Type": TYPES[extname(file)] ?? "application/octet-stream", ...headersFor(rules, path) });
+    const file = resolve(path);
+    const status = file === join(dist, "404.html") ? 404 : 200;
+    res.writeHead(status, { "Content-Type": TYPES[extname(file)] ?? "application/octet-stream", ...headersFor(rules, path) });
     createReadStream(file).pipe(res);
   }).listen(port, () => console.log(`serving dist on http://localhost:${port}`));
 }

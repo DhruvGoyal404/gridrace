@@ -7,6 +7,7 @@ import { useIsNight, useRoute, useTheme } from "./lib/browser";
 // Play and Bench load on first visit, so the landing page ships only the race.
 const Play = lazy(() => import("./routes/Play").then((m) => ({ default: m.Play })));
 const Bench = lazy(() => import("./routes/Bench").then((m) => ({ default: m.Bench })));
+import { NotFound } from "./routes/NotFound";
 import { DEFAULT_PUZZLE, type PuzzleMeta, Race } from "./routes/Race";
 
 const DEFAULT_META: PuzzleMeta = { puzzle: DEFAULT_PUZZLE, difficulty: "Expert", hardest: "XY-Wing", seed: 18 };
@@ -51,7 +52,12 @@ export function App() {
   useEffect(() => {
     const explainer = document.getElementById("explainer");
     if (explainer) explainer.hidden = route !== "/";
-    document.title = { "/": "GridRace: four Sudoku solvers, raced", "/play": "Play Sudoku with explained hints | GridRace", "/bench": "In-browser benchmark | GridRace" }[route];
+    document.title = {
+      "/": "GridRace: four Sudoku solvers, raced",
+      "/play": "Play Sudoku with explained hints | GridRace",
+      "/bench": "In-browser benchmark | GridRace",
+      "404": "Page not found | GridRace",
+    }[route];
   }, [route]);
 
   function race(m: PuzzleMeta) {
@@ -71,6 +77,7 @@ export function App() {
         <Suspense fallback={<p className="mx-auto max-w-[1240px] px-4 py-10 text-ink-2">Loading…</p>}>
           {route === "/play" && <Play key={playKey} />}
           {route === "/bench" && <Bench />}
+          {route === "404" && <NotFound go={go} />}
         </Suspense>
       </main>
       <PasteDialog

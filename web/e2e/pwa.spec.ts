@@ -61,3 +61,23 @@ test("nothing overflows sideways and the header fits", async ({ page, errors }) 
     expect(fits.scroll, `${path}: no sideways scroll`).toBeLessThanOrEqual(fits.width);
   }
 });
+
+test("unknown paths get a real 404 with a way back", async ({ page, request, errors }) => {
+  for (const path of ["/asdf", "/asdf/asdc", "/play/extra"]) {
+    const res = await request.get(path);
+    expect(res.status(), path).toBe(404);
+    expect(await res.text(), path).toContain('name="robots" content="noindex"');
+  }
+  for (const path of ["/", "/play", "/bench"]) {
+    expect((await request.get(path)).status(), path).toBe(200);
+  }
+  await page.goto("/asdf/asdc");
+  // The document's own 404 status is logged by the browser; it is the point of this test.
+  errors.splice(0, errors.length, ...errors.filter((e) => !/status of 404/.test(e)));
+  await expect(page.getByRole("heading", { name: "No such departure." })).toBeVisible();
+  await expect(page.getByText("/asdf/asdc")).toBeVisible();
+  await expect(page).toHaveTitle("Page not found | GridRace");
+  await expect(page.locator("#explainer")).toBeHidden();
+  await page.getByRole("link", { name: /^Play/ }).first().click();
+  await expect(page.getByRole("grid")).toBeVisible({ timeout: 30_000 });
+});

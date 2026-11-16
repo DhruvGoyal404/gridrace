@@ -137,6 +137,9 @@ dialogs, nothing round except the status dot.
   the browser column reading "Not run yet"; the method sits under the table.
 - **Explainer** (landing): a comparison table from 768 px; below that, four stacked
   plates, one per solver, each a `<dl>` with the same rows. Both are static HTML.
+- **Not found** (any unknown path, served as 404.html with status 404, `noindex`): three
+  flap tiles reading 404 in `--danger`, the headline "No such departure.", the path that
+  was asked for, and the three routes as departure rows marked "Boarding".
 - **Digit pad** (Play): nine plain buttons under the board, each disabled once all nine
   copies are placed; they enter notes while notes mode is on.
 - **Hint ladder** (Play): a four-step progress meter, "1 Technique, 2 Where to look,

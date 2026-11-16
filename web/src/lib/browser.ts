@@ -59,14 +59,16 @@ export function useReducedMotion(): boolean {
 
 export const ROUTES = ["/", "/play", "/bench"] as const;
 export type Route = (typeof ROUTES)[number];
+/** A route, or "404" for any other path. */
+export type Page = Route | "404";
 
-function current(): Route {
+function current(): Page {
   const path = location.pathname.replace(/\/+$/, "") || "/";
-  return (ROUTES as readonly string[]).includes(path) ? (path as Route) : "/";
+  return (ROUTES as readonly string[]).includes(path) ? (path as Route) : "404";
 }
 
 /** History-API routing for three routes; no router dependency needed. */
-export function useRoute(): [Route, (to: Route, search?: string) => void] {
+export function useRoute(): [Page, (to: Route, search?: string) => void] {
   const route = useSyncExternalStore(
     (cb) => {
       addEventListener("popstate", cb);

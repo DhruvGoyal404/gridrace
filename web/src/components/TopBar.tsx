@@ -1,4 +1,4 @@
-import type { Route, Theme } from "../lib/browser";
+import type { Page, Route, Theme } from "../lib/browser";
 import { Icon } from "./Icon";
 
 const NAV: { to: Route; label: string }[] = [
@@ -8,7 +8,7 @@ const NAV: { to: Route; label: string }[] = [
 ];
 
 interface Props {
-  route: Route;
+  route: Page;
   go: (to: Route) => void;
   theme: Theme;
   night: boolean;
