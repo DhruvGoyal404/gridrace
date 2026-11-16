@@ -32,8 +32,21 @@ function serviceWorker(): Plugin {
   };
 }
 
+/** Preloads the Latin face, so text paints once in Archivo instead of repainting on swap. */
+function preloadFont(): Plugin {
+  return {
+    name: "gridrace-preload-font",
+    apply: "build",
+    transformIndexHtml(_html, ctx) {
+      const font = Object.keys(ctx.bundle ?? {}).find((f) => /archivo-latin-wdth-normal.*\.woff2$/.test(f));
+      if (!font) throw new Error("preload-font: the Archivo Latin file is missing from the bundle");
+      return [{ tag: "link", attrs: { rel: "preload", href: `/${font}`, as: "font", type: "font/woff2", crossorigin: "" }, injectTo: "head" }];
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), serviceWorker()],
+  plugins: [react(), tailwindcss(), serviceWorker(), preloadFont()],
   worker: { format: "es" },
   server: { headers: isolation },
   preview: { headers: isolation },

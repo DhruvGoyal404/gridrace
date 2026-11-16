@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { ALGORITHMS, type AlgoIndex, type Timed } from "../engine/protocol";
 import { count, duration } from "../lib/format";
 
@@ -43,7 +44,7 @@ function Status({ lane }: { lane: LaneState }) {
 /** The departure board: one row per solver, every number measured in this browser. */
 const ORDINAL = ["1st", "2nd", "3rd", "4th"];
 
-export function Lanes({ lanes, selected, onSelect, nodeLimit }: Props) {
+function LanesView({ lanes, selected, onSelect, nodeLimit }: Props) {
   const logMax = Math.log10(nodeLimit);
   // Arrival order by measured time per solve; a solver that gave up has no place.
   const arrived = lanes
@@ -122,3 +123,6 @@ export function Lanes({ lanes, selected, onSelect, nodeLimit }: Props) {
     </div>
   );
 }
+
+/** Memoised: replay ticks re-render the race view, but the lanes only change when a solver arrives. */
+export const Lanes = memo(LanesView);
