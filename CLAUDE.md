@@ -113,6 +113,13 @@ up/down scripts; the README says so.
   reloads offline and plays.
 - `web/scripts/assets.mjs` renders the icons and the OG image from HTML; rerun it when
   the brand or the quoted medians change.
+- After each deploy, CI's report-only Lighthouse job runs `deploy/lighthouse.mjs`: three
+  runs per preset against the live site, median and range in the job summary. Targets:
+  SEO, Accessibility, Best Practices 100; Performance >= 95 on the landing page. Local
+  mobile runs on the dev laptop swing widely with its load; trust the CI median.
+- deploy/ overrides glob 14.0.3 and minimatch 11.0.3 (GHSA-3g3m-2fjr-6pw4,
+  GHSA-g3hv-75wg-m249, both through Lighthouse's error reporter); drop them once
+  Lighthouse's own ranges include fixed releases.
 
 ## Environment
 
