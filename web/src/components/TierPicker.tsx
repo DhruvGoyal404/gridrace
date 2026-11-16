@@ -13,7 +13,7 @@ export function TierPicker({ tier, onTier, legend = "Difficulty" }: Props) {
   return (
     <fieldset className="min-w-0">
       <legend className="label mb-2 text-ink-2">{legend}</legend>
-      <div className="flex flex-wrap gap-1">
+      <div className="grid grid-cols-3 gap-1 sm:flex sm:flex-wrap">
         {TIERS.map((t, i) => (
           <label key={t} className="relative">
             <input

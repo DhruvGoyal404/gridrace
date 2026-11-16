@@ -47,3 +47,17 @@ test("works offline after the first visit", async ({ page, context, errors }) =>
   await expect(page.getByRole("grid")).toBeVisible({ timeout: 30_000 });
   await context.setOffline(false);
 });
+
+test("nothing overflows sideways and the header fits", async ({ page, errors }) => {
+  void errors;
+  for (const path of ["/", "/play", "/bench"]) {
+    await page.goto(path);
+    await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
+    const fits = await page.evaluate(() => {
+      const toggle = document.querySelector('header button[aria-label^="Switch to"]')!.getBoundingClientRect();
+      return { right: toggle.right, width: innerWidth, scroll: document.documentElement.scrollWidth };
+    });
+    expect(fits.right, `${path}: theme toggle inside the viewport`).toBeLessThanOrEqual(fits.width);
+    expect(fits.scroll, `${path}: no sideways scroll`).toBeLessThanOrEqual(fits.width);
+  }
+});

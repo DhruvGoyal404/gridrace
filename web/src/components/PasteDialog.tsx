@@ -91,7 +91,7 @@ export function PasteDialog({ open, onClose, onLoad }: Props) {
           placeholder="53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79"
         />
         <p id={`${id}-status`} role="status" className={`min-h-6 text-[15px] ${check.state === "bad" ? "text-danger" : "text-ink-2"}`}>
-          {check.state === "checking" && "Checking..."}
+          {check.state === "checking" && "Checking…"}
           {check.state === "bad" && check.message}
           {check.state === "ok" && `One solution. ${check.a.givens} givens, graded ${check.a.difficulty}${check.a.hardest ? ` (needs ${check.a.hardest})` : ""}.`}
         </p>

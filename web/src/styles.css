@@ -106,9 +106,34 @@
     font-variant-numeric: tabular-nums;
   }
 
+  html,
+  body {
+    /* Nothing may push the page sideways on a phone (e2e checks scrollWidth too). */
+    overflow-x: clip;
+  }
+
   body {
     margin: 0;
     min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* The app fills the screen so the footer sits at the bottom of short pages. */
+  #app {
+    flex: 1 0 auto;
+  }
+
+  a {
+    text-decoration: underline;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  button:not(:disabled):active {
+    transform: translateY(1px);
   }
 
   ::selection {

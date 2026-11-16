@@ -41,8 +41,16 @@ function Status({ lane }: { lane: LaneState }) {
 }
 
 /** The departure board: one row per solver, every number measured in this browser. */
+const ORDINAL = ["1st", "2nd", "3rd", "4th"];
+
 export function Lanes({ lanes, selected, onSelect, nodeLimit }: Props) {
   const logMax = Math.log10(nodeLimit);
+  // Arrival order by measured time per solve; a solver that gave up has no place.
+  const arrived = lanes
+    .map((l, i) => ({ i, micros: l.status === "done" && !l.result.aborted ? l.result.micros : Infinity }))
+    .filter((x) => x.micros < Infinity)
+    .sort((a, b) => a.micros - b.micros)
+    .map((x) => x.i);
   return (
     <div role="radiogroup" aria-label="Solvers. Choose one to replay its search." className="border-t border-rule">
       {ALGORITHMS.map((a, i) => {
@@ -69,7 +77,10 @@ export function Lanes({ lanes, selected, onSelect, nodeLimit }: Props) {
               {a.code}
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-[15px] font-semibold text-ink">{a.name}</span>
+              <span className="flex items-baseline gap-2">
+                <span className="truncate text-[15px] font-semibold text-ink">{a.name}</span>
+                {on && <span className="label shrink-0 text-ink-2">Replaying</span>}
+              </span>
               <span className="mt-1 block h-1.5 bg-rule" aria-hidden="true">
                 <span
                   className={`block h-full ${BAR[i]}`}
@@ -77,16 +88,16 @@ export function Lanes({ lanes, selected, onSelect, nodeLimit }: Props) {
                 />
               </span>
             </span>
-            <span className="justify-self-end sm:justify-self-start">
+            <span className="flex items-baseline gap-2 justify-self-end sm:justify-self-start">
               <Status lane={lane} />
+              {arrived.includes(i) && (
+                <span className="condensed text-[15px] font-bold text-ink">{ORDINAL[arrived.indexOf(i)]}</span>
+              )}
             </span>
-            <span className="condensed col-span-3 flex flex-wrap gap-x-4 text-[15px] text-ink-2 sm:col-span-1 sm:block sm:text-right sm:text-[18px] sm:text-ink">
-              <span className="font-semibold text-ink">{r ? duration(r.micros) : "–"}</span>
-              <span className="sm:hidden">
-                {r ? `${count(nodes)} nodes · ${count(r.stats.backtracks)} backtracks · ${count(r.stats.checks)} checks` : ""}
-              </span>
+            <span className="condensed col-span-3 text-[18px] font-semibold text-ink sm:col-span-1 sm:text-right">
+              {r ? duration(r.micros) : "–"}
             </span>
-            <span className="condensed col-span-4 hidden grid-cols-3 gap-4 pl-[68px] text-[14px] text-ink-2 sm:grid">
+            <span className="condensed col-span-3 grid grid-cols-3 gap-2 text-[14px] text-ink-2 sm:col-span-4 sm:gap-4 sm:pl-[68px]">
               <span>
                 <span className="font-semibold text-ink">{r ? count(nodes) : "–"}</span> nodes
               </span>

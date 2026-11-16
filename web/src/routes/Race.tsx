@@ -155,7 +155,7 @@ export function Race({ meta, setMeta, onPlay }: Props) {
     <div className="mx-auto max-w-[1240px] px-4 pt-6 pb-12 sm:pt-8">
       <div className="mb-6 flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
         <div>
-          <h1 className="semi-condensed text-[28px] leading-tight font-bold text-balance lg:text-[36px]">
+          <h1 className="semi-condensed text-[28px] leading-tight font-bold text-balance lg:text-[44px]">
             Four Sudoku solvers. One puzzle. Every node counted.
           </h1>
           <p className="mt-1 text-[15px] text-ink-2">
@@ -210,6 +210,13 @@ export function Race({ meta, setMeta, onPlay }: Props) {
         </section>
 
         <section aria-labelledby="board-title" className="grid content-start gap-5">
+          <div>
+            <h2 id="board-title" className="label mb-2 flex justify-between text-ink-2">
+              <span>Departures</span>
+              <span aria-live="polite">{finished === 4 ? "All arrived" : `${finished} of 4 arrived`}</span>
+            </h2>
+            <Lanes lanes={lanes} selected={selected} onSelect={setSelected} nodeLimit={NODE_LIMIT} />
+          </div>
           <div className="flex flex-wrap items-end gap-3">
             <TierPicker tier={tier} onTier={setTier} legend="New puzzle at" />
             <button
@@ -219,7 +226,7 @@ export function Race({ meta, setMeta, onPlay }: Props) {
               className="flex h-9 items-center gap-2 border border-ink px-3 text-[14px] font-semibold disabled:opacity-40"
             >
               <Icon name="shuffle" className="size-4" />
-              {busy ? `Generating ${TIERS[tier]}...` : "New puzzle"}
+              {busy ? `Generating ${TIERS[tier]}…` : "New puzzle"}
             </button>
             <button
               type="button"
@@ -231,7 +238,7 @@ export function Race({ meta, setMeta, onPlay }: Props) {
             <button
               type="button"
               onClick={() => onPlay(meta.puzzle)}
-              className="flex h-9 items-center px-2 text-[14px] font-semibold underline underline-offset-4"
+              className="flex h-9 items-center text-[14px] font-semibold underline underline-offset-4"
             >
               Play this puzzle
             </button>
@@ -241,13 +248,7 @@ export function Race({ meta, setMeta, onPlay }: Props) {
               {error}
             </p>
           )}
-          <div>
-            <h2 id="board-title" className="label mb-2 flex justify-between text-ink-2">
-              <span>Departures</span>
-              <span aria-live="polite">{finished === 4 ? "All arrived" : `${finished} of 4 arrived`}</span>
-            </h2>
-            <Lanes lanes={lanes} selected={selected} onSelect={setSelected} nodeLimit={NODE_LIMIT} />
-          </div>
+
         </section>
       </div>
     </div>

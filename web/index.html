@@ -39,17 +39,59 @@
 
     <section id="explainer" class="explainer border-t border-rule" aria-labelledby="explainer-title">
       <div class="mx-auto max-w-[1240px] px-4 py-14">
-        <h2 id="explainer-title" class="semi-condensed text-[28px] leading-tight font-bold lg:text-[36px]">
+        <h2 id="explainer-title" class="semi-condensed text-[28px] leading-tight font-bold">
           From brute force to Dancing Links
         </h2>
         <p class="mt-3 max-w-[70ch] text-[16px] text-ink-2">
           The race above runs four solvers written in Rust, compiled to WebAssembly, each in its own worker. They count the
           same three things: <strong class="text-ink">nodes</strong> (placements tried),
           <strong class="text-ink">backtracks</strong> (guesses undone), and <strong class="text-ink">checks</strong>
-          (questions of the form "can this digit go here?"). What a check costs is where they differ.
+          (questions of the form “can this digit go here?”). What a check costs is where they differ.
         </p>
 
-        <div class="mt-8 overflow-x-auto" tabindex="0" role="region" aria-label="The four solvers compared, scrolls sideways on small screens">
+        <div class="mt-8 grid gap-6 md:hidden">
+          <section class="border-t-2 border-ink pt-3" aria-label="Brute force">
+            <h3 class="condensed text-[22px] font-bold text-brt">BRT <span class="text-[17px] font-semibold text-ink [font-stretch:100%]">Brute force</span></h3>
+            <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-[15px] leading-relaxed">
+              <div class="col-span-2"><dt class="label text-ink-2">The idea</dt><dd>Take the first empty cell, try 1 to 9, and check each digit by scanning its row, column and box. Backtrack on a dead end.</dd></div>
+              <div class="col-span-2"><dt class="label text-ink-2">Cost of a node</dt><dd>9 digits × 27 cell reads</dd></div>
+                <div><dt class="label text-ink-2">Easy puzzles</dt><dd class="condensed text-[17px]">3.26 ms, 164,517 nodes</dd></div>
+                <div><dt class="label text-ink-2">Hardest puzzles</dt><dd class="condensed text-[17px]">8.99 ms, 194,314 nodes</dd></div>
+              <div class="col-span-2"><dt class="label text-ink-2">What it teaches</dt><dd>Exponential search with no pruning. Digit order decides everything: relabel a puzzle and it can take 100 times longer.</dd></div>
+            </dl>
+          </section>
+          <section class="border-t-2 border-ink pt-3" aria-label="Bitmask">
+            <h3 class="condensed text-[22px] font-bold text-bit">BIT <span class="text-[17px] font-semibold text-ink [font-stretch:100%]">Bitmask</span></h3>
+            <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-[15px] leading-relaxed">
+              <div class="col-span-2"><dt class="label text-ink-2">The idea</dt><dd>The same search, but a 9-bit mask per row, column and box gives every legal digit at once: one AND-NOT instead of 27 reads.</dd></div>
+              <div class="col-span-2"><dt class="label text-ink-2">Cost of a node</dt><dd>O(1) per cell</dd></div>
+                <div><dt class="label text-ink-2">Easy puzzles</dt><dd class="condensed text-[17px]">447 µs, 164,517 nodes</dd></div>
+                <div><dt class="label text-ink-2">Hardest puzzles</dt><dd class="condensed text-[17px]">1.25 ms, 194,314 nodes</dd></div>
+              <div class="col-span-2"><dt class="label text-ink-2">What it teaches</dt><dd>Same tree, cheaper checks: 5 to 7 times faster with not one node fewer.</dd></div>
+            </dl>
+          </section>
+          <section class="border-t-2 border-ink pt-3" aria-label="MRV + propagation">
+            <h3 class="condensed text-[22px] font-bold text-mrv">MRV <span class="text-[17px] font-semibold text-ink [font-stretch:100%]">MRV + propagation</span></h3>
+            <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-[15px] leading-relaxed">
+              <div class="col-span-2"><dt class="label text-ink-2">The idea</dt><dd>After each guess, place forced digits (naked and hidden singles) until nothing changes, then branch on the cell with the fewest candidates.</dd></div>
+              <div class="col-span-2"><dt class="label text-ink-2">Cost of a node</dt><dd>One propagation pass, O(81)</dd></div>
+                <div><dt class="label text-ink-2">Easy puzzles</dt><dd class="condensed text-[17px]">12.0 µs, 56 nodes</dd></div>
+                <div><dt class="label text-ink-2">Hardest puzzles</dt><dd class="condensed text-[17px]">220 µs, 701 nodes</dd></div>
+              <div class="col-span-2"><dt class="label text-ink-2">What it teaches</dt><dd>A smaller tree beats a faster check: thousands of times fewer nodes.</dd></div>
+            </dl>
+          </section>
+          <section class="border-t-2 border-ink pt-3" aria-label="Dancing Links">
+            <h3 class="condensed text-[22px] font-bold text-dlx">DLX <span class="text-[17px] font-semibold text-ink [font-stretch:100%]">Dancing Links</span></h3>
+            <dl class="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-[15px] leading-relaxed">
+              <div class="col-span-2"><dt class="label text-ink-2">The idea</dt><dd>Knuth’s Algorithm X on Sudoku as exact cover: 729 placements, 324 constraints. Cover and uncover are O(1) pointer splices.</dd></div>
+              <div class="col-span-2"><dt class="label text-ink-2">Cost of a node</dt><dd>O(columns) to choose, O(1) per link</dd></div>
+                <div><dt class="label text-ink-2">Easy puzzles</dt><dd class="condensed text-[17px]">29.5 µs, 56 nodes</dd></div>
+                <div><dt class="label text-ink-2">Hardest puzzles</dt><dd class="condensed text-[17px]">272 µs, 799 nodes</dd></div>
+              <div class="col-span-2"><dt class="label text-ink-2">What it teaches</dt><dd>The general method. It loses to Sudoku-specific propagation on easy ground and nearly catches it when the search gets hard.</dd></div>
+            </dl>
+          </section>
+        </div>
+        <div class="mt-8 hidden overflow-x-auto md:block" tabindex="0" role="region" aria-label="The four solvers compared">
           <table class="w-full min-w-[720px] border-collapse text-left">
             <caption class="sr-only">The four solvers compared</caption>
             <thead>
@@ -67,7 +109,7 @@
                 <td class="py-3 pr-5">Take the first empty cell, try 1 to 9, and check each digit by scanning its row, column and box. Backtrack on a dead end.</td>
                 <td class="py-3 pr-5">The same search, but a 9-bit mask per row, column and box gives every legal digit at once: one AND-NOT instead of 27 reads.</td>
                 <td class="py-3 pr-5">After each guess, place forced digits (naked and hidden singles) until nothing changes, then branch on the cell with the fewest candidates.</td>
-                <td class="py-3 pr-5">Knuth's Algorithm X on Sudoku as exact cover: 729 placements, 324 constraints. Cover and uncover are O(1) pointer splices.</td>
+                <td class="py-3 pr-5">Knuth’s Algorithm X on Sudoku as exact cover: 729 placements, 324 constraints. Cover and uncover are O(1) pointer splices.</td>
               </tr>
               <tr class="border-b border-rule">
                 <th scope="row" class="label sticky left-0 bg-ground py-3 pr-4 text-ink-2">Cost of a node</th>
@@ -111,7 +153,7 @@
             <h3 class="semi-condensed text-[22px] font-bold">Hints that say why</h3>
             <p class="mt-2 max-w-[65ch] text-[16px] text-ink-2">
               A human-style solver works from pencil marks with seventeen named techniques, easiest first, in the order of Sudoku
-              Explainer's difficulty ratings: from hidden singles to X-Wings, Unique Rectangles and XY-Chains. A hint names the
+              Explainer’s difficulty ratings: from hidden singles to X-Wings, Unique Rectangles and XY-Chains. A hint names the
               technique, points at where to look, then explains the deduction and highlights the cells that prove it.
             </p>
           </div>

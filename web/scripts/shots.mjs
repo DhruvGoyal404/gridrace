@@ -50,7 +50,7 @@ for (const vp of VIEWPORTS) {
       el.dispatchEvent(new Event("input", { bubbles: true }));
     });
     await page.waitForTimeout(300);
-    await page.locator("#main").scrollIntoViewIfNeeded();
+    await page.evaluate(() => scrollTo(0, 0));
     await shot("race-replay");
 
     // Play with a hint at the "why" rung.
@@ -60,15 +60,21 @@ for (const vp of VIEWPORTS) {
       await page.getByRole("button", { name: /^(Give me a hint|Show where to look|Show why)$/ }).click();
       await page.waitForTimeout(250);
     }
-    await shot("play-hint");
+    await page.evaluate(() => scrollTo(0, 0));
+    // Phone: the whole page, so the board and the hint panel both show; then the panel alone.
+    await shot("play-hint", vp.name === "phone");
     if (vp.name === "phone") {
-      await page.getByRole("heading", { name: "Hint" }).scrollIntoViewIfNeeded();
+      await page.getByRole("heading", { name: "Hint" }).evaluate((el) => el.scrollIntoView({ block: "start" }));
       await shot("play-hint-panel");
     }
 
     await page.goto(base + "/bench");
-    await page.getByRole("button", { name: "Run the bench" }).waitFor();
+    await page.getByText(/puzzles in \d+ sets/).waitFor();
     await shot("bench");
+    // A completed run: the table with this browser's column filled in.
+    await page.getByRole("button", { name: "Run the bench" }).click();
+    await page.getByRole("button", { name: "Run again" }).waitFor({ timeout: 30 * 60_000 });
+    await shot("bench-results", true);
     await context.close();
   }
 }

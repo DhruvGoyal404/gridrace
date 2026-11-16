@@ -163,5 +163,14 @@ jobs:
       - name: Deploy web/dist
         if: steps.ready.outputs.ok == 'true'
         working-directory: deploy
-        run: npx wrangler pages deploy ../web/dist --project-name gridrace --branch main --commit-hash "$GITHUB_SHA"
+        # A project created seconds earlier can read as missing for a moment: retry.
+        run: |
+          for attempt in 1 2 3; do
+            if npx wrangler pages deploy ../web/dist --project-name gridrace --branch main --commit-hash "$GITHUB_SHA"; then
+              exit 0
+            fi
+            echo "::warning::deploy attempt $attempt failed; retrying in 20 s"
+            sleep 20
+          done
+          exit 1
 

@@ -14,6 +14,7 @@ const PATHS = {
   check: "M4 10.5l4 4 8-9",
   shuffle: "M3 6h3l8 8h3M3 14h3l2-2M12 8l2-2h3M15 4l2 2-2 2M15 12l2 2-2 2",
   close: "M5 5l10 10M15 5L5 15",
+  grid: "M3.5 3.5h13v13h-13zM7.8 3.5v13M12.2 3.5v13M3.5 7.8h13M3.5 12.2h13",
 } as const;
 
 export type IconName = keyof typeof PATHS;

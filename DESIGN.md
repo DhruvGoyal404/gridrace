@@ -70,8 +70,8 @@ number can change.
 | Board digits | 75 | 600 | the cell's height × 0.62 |
 | Pencil marks | 85 | 500 | the cell's height × 0.22 |
 | Lane numbers | 75 | 600, `tnum` | 18 px, 22 px from 1024 px |
-| Headline | 87.5 | 700 | 28 px, 36 px from 1024 px |
-| Section heading | 87.5 | 700 | 22 px |
+| Headline (page title) | 87.5 | 700 | 28 px, 44 px from 1024 px |
+| Section heading | 87.5 | 700 | 28 px for the landing explainer, 22 px inside a screen |
 | Body | 100 | 400 | 16 px / 1.5 |
 | Label, code | 100 | 600, tracked +0.06em, caps | 12 px |
 | Explanation text | 100 | 400 | 15 px / 1.55 |
@@ -88,9 +88,11 @@ dialogs, nothing round except the status dot.
 
 ## Layout
 
-- **Top bar** (56 px): the wordmark GRIDRACE as eight dark flap tiles, nav Race / Play /
-  Bench as standard links with a 3 px signal underline on the current route, Paste,
-  theme toggle. Generating lives in each screen's tier picker, not in the nav.
+- **Top bar** (56 px; two rows below 640 px, wordmark and actions above, the nav full
+  width below, so nothing overflows a 390 px phone): the wordmark GRIDRACE as eight dark
+  flap tiles (each letter its own element, so the seam sits behind it), nav Race / Play /
+  Bench with a 3 px signal underline on the current route, a Source link to GitHub from
+  640 px, Paste, theme toggle. Generating lives in each screen's tier picker.
 - **Race** (desktop ≥ 1024 px): board and its transport in the left column, the departure
   board (four lanes) and the puzzle picker in the right column, the headline above both.
   Below the fold, the explainer: four registered plates, one per solver, with idea,
@@ -110,19 +112,29 @@ dialogs, nothing round except the status dot.
   signal plate with `--on-signal` digit; eliminated pencil marks are struck through in
   `--danger`.
 - **Lane** (departure row, a radio in a radiogroup: the chosen lane is replayed): the
-  code in its series hue, or on a signal plate when chosen; solver name; a node bar on a
-  log scale whose full width is the node limit (the budget, drawn on one shared axis so
-  lanes compare); status; time; nodes, backtracks and checks. No coloured side borders. Status words and forms: `BOARDING` (dashed rule, waiting), `SEARCHING` (blinking
+  code in its series hue, or on a signal plate when chosen, with a "Replaying" label by
+  the name; a node bar on a log scale whose full width is the node limit (the budget, on
+  one shared axis so lanes compare); status plus the arrival position (1st to 4th by
+  measured time; a solver that gave up has none); time; nodes, backtracks and checks in a
+  three-column row at every width. No coloured side borders. Status words and forms: `BOARDING` (dashed rule, waiting), `SEARCHING` (blinking
   dot), `ARRIVED` (solid rule), `GAVE UP` (struck, `--danger`, with the limit it hit).
 - **Buttons**: primary is a yellow plate with black text (both themes); secondary is a
   1 px `--ink` outline; ghost is text with an underline on hover. 40 px tall, 44 px touch
   target on touch devices.
 - **Tier chips**: a radio group (Easy, Medium, Hard, Expert, Master, Beyond); selected
   is a filled ink plate with `--panel` text.
+- **Play tools**: Notes, Undo, Redo, Erase, Fill notes, Mistakes in a fixed grid (three
+  columns on a phone). Labels never change; a toggle's state is a filled ink plate
+  (`aria-pressed`), like the tier chips. The timer sits on the title's baseline.
+- **Bench**: the results table is on screen before any run, native medians filled in and
+  the browser column reading "Not run yet"; the method sits under the table.
+- **Explainer** (landing): a comparison table from 768 px; below that, four stacked
+  plates, one per solver, each a `<dl>` with the same rows. Both are static HTML.
 - **Digit pad** (Play): nine plain buttons under the board, each disabled once all nine
   copies are placed; they enter notes while notes mode is on.
-- **Hint ladder** (Play): four rungs, Technique, Where to look, Why, Apply, shown as
-  plates that fill in as the player climbs. Rung 2 washes the house in signal, rung 3
+- **Hint ladder** (Play): a four-step progress meter, "1 Technique, 2 Where to look,
+  3 Why, 4 Apply", each step a 3 px rule that turns ink when climbed; the button below
+  names the next step. Rung 2 washes the house in signal, rung 3
   outlines the pattern, strikes eliminated notes and plates the target cell, rung 4
   applies the move as one undoable step. A hint goes stale the moment the board changes.
 - **Notes** are drawn with CSS (`::before` from `data-note`), because the cell's
@@ -164,6 +176,10 @@ dialogs, nothing round except the status dot.
 
 - Custom CSS sits in `@layer base` and `@layer components`, so a Tailwind utility on an
   element always wins. Unlayered rules once overrode utilities and hid the wordmark.
+- `html, body { overflow-x: clip }`, and the e2e suite checks at 390 px that the header
+  fits and nothing scrolls sideways on every route.
+- Links in prose are underlined; buttons press down 1 px (`:active`); disabled buttons
+  show `cursor: not-allowed`. The page is a column, so the footer sits at the bottom.
 - No `style` attributes in HTML (the CSP is `style-src 'self'`); React's `style` prop is
   set through the CSSOM and is allowed.
 - The split-flap line sits behind the glyphs (`z-index`), so it shows only between

@@ -10,7 +10,7 @@ test("play by keyboard: enter, notes, undo, redo, mistakes", async ({ page, erro
   await page.getByRole("gridcell", { name: cell(1, 3) }).click();
   await page.keyboard.press("1"); // wrong: the solution has 4 here
   await expect(page.getByRole("gridcell", { name: `${cell(1, 3)}, 1` })).toBeVisible();
-  await page.getByRole("button", { name: /Show mistakes/ }).click();
+  await page.getByRole("button", { name: "Mistakes" }).click();
   await expect(page.getByRole("gridcell", { name: `${cell(1, 3)}, 1` }).locator("span")).toHaveClass(/text-danger/);
   await page.keyboard.press("Control+z");
   await expect(page.getByRole("gridcell", { name: `${cell(1, 3)}, empty` })).toBeVisible();

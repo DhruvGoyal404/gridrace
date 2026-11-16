@@ -14,7 +14,7 @@ const SAVE = "gridrace.play";
 
 type Saved = Pick<PlayState, "game" | "cells" | "notes" | "elapsed" | "solved">;
 
-/** A puzzle to load, from "Play this puzzle" on the race page (?p=...). */
+/** A puzzle to load, from "Play this puzzle" on the race page (?p=…). */
 function requested(): string | null {
   const p = new URLSearchParams(location.search).get("p");
   return p && /^[0-9.]{81}$/.test(p) ? p : null;
@@ -179,27 +179,29 @@ export function Play() {
   if (!state) {
     return (
       <div className="mx-auto max-w-[1240px] px-4 py-10 text-ink-2" role="status">
-        {error ?? "Generating a puzzle..."}
+        {error ?? "Generating a puzzle…"}
       </div>
     );
   }
 
   const placed = (d: number) => state.cells.filter((x) => x === d).length;
-  const tool = "flex h-10 items-center gap-2 border border-rule bg-panel px-3 text-[14px] font-semibold text-ink hover:border-ink disabled:opacity-40";
+  // Toggles show their state as a filled plate (aria-pressed), like the tier chips; labels stay put.
+  const tool =
+    "flex h-10 items-center justify-center gap-2 border border-rule bg-panel px-3 text-[14px] font-semibold text-ink hover:border-ink disabled:opacity-40 aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-panel";
 
   return (
     <div className="mx-auto max-w-[1240px] px-4 pt-6 pb-12 sm:pt-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="semi-condensed text-[28px] leading-tight font-bold lg:text-[36px]">Play</h1>
-          <p className="mt-1 text-[15px] text-ink-2">
-            {state.game.difficulty ?? "Pasted puzzle"}
-            {state.game.seed !== null ? `, seed ${state.game.seed}` : ""}. Hints explain why, one step at a time.
+      <div className="mb-6">
+        <div className="flex items-baseline justify-between gap-4">
+          <h1 className="semi-condensed text-[28px] leading-tight font-bold lg:text-[44px]">Play</h1>
+          <p className="condensed text-[28px] font-semibold lg:text-[36px]">
+            <span className="sr-only">Time </span>
+            {clock(state.elapsed)}
           </p>
         </div>
-        <p className="condensed text-[28px] font-semibold">
-          <span className="sr-only">Time </span>
-          {clock(state.elapsed)}
+        <p className="mt-1 text-[15px] text-ink-2">
+          {state.game.difficulty ?? "Pasted puzzle"}
+          {state.game.seed !== null ? `, seed ${state.game.seed}` : ""}. Hints explain why, one step at a time.
         </p>
       </div>
 
@@ -239,10 +241,10 @@ export function Play() {
               <p className="text-[15px]">{state.game.difficulty}{state.game.hardest ? `, needed ${state.game.hardest}` : ""}.</p>
             </div>
           )}
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-3 xl:grid-cols-6">
             <button type="button" className={tool} aria-pressed={state.notesMode} onClick={() => dispatch({ type: "toggleNotes" })}>
               <Icon name="pencil" />
-              Notes {state.notesMode ? "on" : "off"}
+              Notes
             </button>
             <button type="button" className={tool} onClick={() => dispatch({ type: "undo" })} disabled={!state.past.length || state.solved}>
               <Icon name="undo" />
@@ -257,27 +259,33 @@ export function Play() {
               Erase
             </button>
             <button type="button" className={tool} onClick={() => dispatch({ type: "fillNotes" })} disabled={state.solved}>
+              <Icon name="grid" />
               Fill notes
             </button>
             <button type="button" className={tool} aria-pressed={state.showMistakes} onClick={() => dispatch({ type: "toggleMistakes" })}>
               <Icon name="check" />
-              Show mistakes {state.showMistakes ? "on" : "off"}
+              Mistakes
             </button>
           </div>
 
           <div className="border-t border-rule pt-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
               <h2 className="semi-condensed text-[22px] font-bold">Hint</h2>
-              <ol className="flex flex-wrap gap-1" aria-label="Hint ladder">
-                {RUNGS.map((r, i) => (
-                  <li
-                    key={r}
-                    aria-current={liveHint?.level === i + 1 ? "step" : undefined}
-                    className={`label px-2 py-1 whitespace-nowrap ${liveHint && liveHint.level >= i + 1 ? "bg-ink text-panel" : "text-ink-2"}`}
-                  >
-                    {r}
-                  </li>
-                ))}
+              {/* A progress meter: numbered rungs, filled up to the one shown. */}
+              <ol className="grid w-full grid-cols-4 gap-1 sm:w-auto" aria-label="Hint ladder">
+                {RUNGS.map((r, i) => {
+                  const climbed = Boolean(liveHint && liveHint.level >= i + 1);
+                  return (
+                    <li
+                      key={r}
+                      aria-current={liveHint?.level === i + 1 ? "step" : undefined}
+                      className={`border-t-[3px] pt-1 text-[13px] whitespace-nowrap ${climbed ? "border-ink font-semibold text-ink" : "border-rule text-ink-2"}`}
+                    >
+                      <span className="condensed mr-1 font-bold">{i + 1}</span>
+                      {r}
+                    </li>
+                  );
+                })}
               </ol>
             </div>
             <div aria-live="polite" className="min-h-12">
@@ -314,7 +322,7 @@ export function Play() {
               legend="New game"
             />
             <button type="button" onClick={() => void newGame(tier)} disabled={loading} className="h-9 border border-ink px-3 text-[14px] font-semibold disabled:opacity-40">
-              {loading ? `Generating ${TIERS[tier]}...` : "Start"}
+              {loading ? `Generating ${TIERS[tier]}…` : "Start"}
             </button>
           </div>
           {error && (
