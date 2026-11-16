@@ -31,7 +31,7 @@ export function TopBar({ route, go, night, setTheme, onPaste }: Props) {
           aria-label="GridRace, home"
         >
           {"GRIDRACE".split("").map((ch, i) => (
-            <span key={i} className="tile grid h-7 w-[18px] place-items-center bg-ink text-panel" aria-hidden="true">
+            <span key={i} className="grid h-7 w-[18px] place-items-center bg-ink text-panel" aria-hidden="true">
               <span>{ch}</span>
             </span>
           ))}

@@ -39,7 +39,9 @@ function handle(req: Request): { value: unknown; transfer: Transferable[] } {
       const solved = parse<Solved>(out.json);
       const trace = out.trace;
       out.free();
-      // The traced run pays for recording; time the plain solve separately.
+      // The traced run pays for recording; time the plain solve separately, after one
+      // discarded batch, so the first race of a visit isn't timed on cold WebAssembly.
+      time(req.puzzle, req.algo, req.nodeLimit, 5);
       const timing = time(req.puzzle, req.algo, req.nodeLimit, 15);
       const value: Timed = { ...solved, micros: timing.micros, reps: timing.reps, trace };
       return { value, transfer: [trace.buffer] };

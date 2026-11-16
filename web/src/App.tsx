@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { PasteDialog } from "./components/PasteDialog";
 import { TopBar } from "./components/TopBar";
 import { engine } from "./engine/client";
 import { TIERS } from "./engine/protocol";
 import { useIsNight, useRoute, useTheme } from "./lib/browser";
-import { Bench } from "./routes/Bench";
-import { Play } from "./routes/Play";
+// Play and Bench load on first visit, so the landing page ships only the race.
+const Play = lazy(() => import("./routes/Play").then((m) => ({ default: m.Play })));
+const Bench = lazy(() => import("./routes/Bench").then((m) => ({ default: m.Bench })));
 import { DEFAULT_PUZZLE, type PuzzleMeta, Race } from "./routes/Race";
 
 const DEFAULT_META: PuzzleMeta = { puzzle: DEFAULT_PUZZLE, difficulty: "Expert", hardest: "XY-Wing", seed: 18 };
@@ -67,8 +68,10 @@ export function App() {
       <TopBar route={route} go={go} theme={theme} night={night} setTheme={setTheme} onPaste={() => setPasting(true)} />
       <main id="main">
         {route === "/" && <Race meta={meta} setMeta={race} onPlay={play} />}
-        {route === "/play" && <Play key={playKey} />}
-        {route === "/bench" && <Bench />}
+        <Suspense fallback={<p className="mx-auto max-w-[1240px] px-4 py-10 text-ink-2">Loading…</p>}>
+          {route === "/play" && <Play key={playKey} />}
+          {route === "/bench" && <Bench />}
+        </Suspense>
       </main>
       <PasteDialog
         open={pasting}

@@ -77,9 +77,9 @@ export function Lanes({ lanes, selected, onSelect, nodeLimit }: Props) {
               {a.code}
             </span>
             <span className="min-w-0">
-              <span className="flex items-baseline gap-2">
-                <span className="truncate text-[15px] font-semibold text-ink">{a.name}</span>
-                {on && <span className="label shrink-0 text-ink-2">Replaying</span>}
+              <span className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-[15px] font-semibold text-ink">{a.name}</span>
+                {on && <span className="label text-ink-2">Replaying</span>}
               </span>
               <span className="mt-1 block h-1.5 bg-rule" aria-hidden="true">
                 <span

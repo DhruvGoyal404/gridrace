@@ -91,7 +91,8 @@
 
 /* The module: one board cell. Everything else is sized from it (DESIGN.md, "Space"). */
 :root {
-  --cell: clamp(34px, 9.6vw, 62px);
+  /* 9 cells, the row rail and the box rules fit a 390 px phone with 16 px gutters. */
+  --cell: clamp(32px, 9vw, 62px);
 }
 
 /* Layered, so Tailwind utilities on an element always win over these defaults. */
@@ -122,6 +123,12 @@
   /* The app fills the screen so the footer sits at the bottom of short pages. */
   #app {
     flex: 1 0 auto;
+  }
+
+  /* Before React mounts, hold a screen's height so the static explainer starts below the
+     fold; mounting then pushes it down off-screen instead of shifting what's in view. */
+  #app:empty {
+    min-height: 100dvh;
   }
 
   a {

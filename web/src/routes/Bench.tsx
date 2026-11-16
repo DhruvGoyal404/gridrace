@@ -10,6 +10,8 @@ interface Set {
   puzzles: string[];
 }
 
+const HUE = ["text-brt", "text-bit", "text-mrv", "text-dlx"] as const;
+
 interface Row {
   set: string;
   algo: number;
@@ -121,7 +123,7 @@ export function Bench() {
           {error}
         </p>
       )}
-      <div className="mt-6 overflow-x-auto border-t border-ink" tabIndex={0} role="region" aria-label="Benchmark results">
+      <div className="mt-6 overflow-x-auto" tabIndex={0} role="region" aria-label="Benchmark results">
         <table className="w-full min-w-[600px] border-collapse">
           <caption className="sr-only">Median and p95 time per solve, in this browser and native</caption>
           <thead>
@@ -139,12 +141,15 @@ export function Bench() {
               ALGORITHMS.map((a) => {
                 const r = measured.get(`${name}-${a.index}`);
                 const native = NATIVE[name]?.[a.index];
+                const firstOfSet = a.index === 0;
                 return (
-                  <tr key={`${name}-${a.index}`} className="border-b border-rule">
-                    <th scope="row" className={`${td} text-left font-semibold`}>
-                      {name} {r && <span className="font-normal text-ink-2">({r.n})</span>}
-                    </th>
-                    <td className={td}>{a.code}</td>
+                  <tr key={`${name}-${a.index}`} className={firstOfSet ? "border-t-2 border-ink" : "border-t border-rule"}>
+                    {firstOfSet && (
+                      <th scope="rowgroup" rowSpan={4} className={`${td} align-top text-left font-semibold`}>
+                        {name} {r && <span className="font-normal text-ink-2">({r.n})</span>}
+                      </th>
+                    )}
+                    <td className={`${td} font-bold ${HUE[a.index]}`}>{a.code}</td>
                     <td className={`${td} text-right font-semibold`}>{r ? duration(r.median) : <span className="font-normal text-ink-2">Not run yet</span>}</td>
                     <td className={`${td} text-right`}>{r ? duration(r.p95) : "–"}</td>
                     <td className={`${td} text-right text-ink-2`}>{native ? duration(native) : "–"}</td>

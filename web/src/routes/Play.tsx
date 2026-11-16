@@ -3,14 +3,24 @@ import { Board, type Marks } from "../components/Board";
 import { Icon } from "../components/Icon";
 import { TierPicker } from "../components/TierPicker";
 import { engine } from "../engine/client";
-import { type HintResult, TIERS } from "../engine/protocol";
+import { type HintResult, type HintStep, TIERS } from "../engine/protocol";
 import { HintPanel, RUNGS, unitCells } from "../play/HintPanel";
 import { type Game, type PlayState, mistakes, reduce, start } from "../play/game";
 import { store, useReducedMotion } from "../lib/browser";
 import { clock, randomSeed } from "../lib/format";
-import { clashes, format, parse } from "../lib/sudoku";
+import { PEERS, clashes, format, parse } from "../lib/sudoku";
 
 const SAVE = "gridrace.play";
+
+/** For a hidden single, the placed digits that rule out every other cell of the house: the
+ *  proof the hint's sentence describes. Other techniques show their own pattern cells. */
+function evidence(step: HintStep, cells: number[]): number[] {
+  if (step.technique !== "Hidden single" || !step.place || !step.unit) return [];
+  const [target, d] = step.place;
+  return unitCells(step.unit).flatMap((c) =>
+    c === target || cells[c] !== 0 ? [] : (PEERS[c]!.find((p) => cells[p] === d) ?? []),
+  );
+}
 
 type Saved = Pick<PlayState, "game" | "cells" | "notes" | "elapsed" | "solved">;
 
@@ -127,18 +137,19 @@ export function Play() {
     const r = h.result;
     if (r.kind === "mistakes" && h.level >= 2) r.cells.forEach((c) => wrong.add(c));
     if (r.kind === "conflict") r.pairs.flat().forEach((c) => wrong.add(c));
+    m.hint = h.level >= 2;
     if (r.kind === "reveal" && h.level >= 2) m.area = new Set([r.cell]);
-    if (r.kind === "reveal" && h.level >= 3) m.target = r.cell;
+    if (r.kind === "reveal" && h.level >= 3) m.target = { cell: r.cell, digit: r.digit };
     if (r.kind === "steps") {
       const first = r.steps[0]!;
       const last = r.steps.at(-1)!;
-      if (h.level === 2) m.area = new Set(first.unit ? unitCells(first.unit) : first.cells);
+      if (h.level >= 2) m.area = new Set(first.unit ? unitCells(first.unit) : first.cells);
       if (h.level >= 3) {
-        m.pattern = new Set(r.steps.flatMap((s) => s.cells));
+        m.pattern = new Set([...r.steps.flatMap((s) => s.cells), ...evidence(last, state.cells)]);
         const struck = new Map<number, number[]>();
         for (const [c, d] of r.steps.flatMap((s) => s.eliminate)) struck.set(c, [...(struck.get(c) ?? []), d]);
         m.struck = struck;
-        m.target = last.place?.[0] ?? null;
+        m.target = last.place ? { cell: last.place[0], digit: last.place[1] } : null;
       }
     }
     return m;
@@ -187,7 +198,7 @@ export function Play() {
   const placed = (d: number) => state.cells.filter((x) => x === d).length;
   // Toggles show their state as a filled plate (aria-pressed), like the tier chips; labels stay put.
   const tool =
-    "flex h-10 items-center justify-center gap-2 border border-rule bg-panel px-3 text-[14px] font-semibold text-ink hover:border-ink disabled:opacity-40 aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-panel";
+    "flex h-10 items-center justify-center gap-2 whitespace-nowrap border border-rule bg-panel px-3 text-[14px] font-semibold text-ink hover:border-ink disabled:opacity-40 aria-pressed:border-ink aria-pressed:bg-ink aria-pressed:text-panel [&>svg]:shrink-0";
 
   return (
     <div className="mx-auto max-w-[1240px] px-4 pt-6 pb-12 sm:pt-8">
@@ -241,7 +252,7 @@ export function Play() {
               <p className="text-[15px]">{state.game.difficulty}{state.game.hardest ? `, needed ${state.game.hardest}` : ""}.</p>
             </div>
           )}
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6 lg:grid-cols-3">
             <button type="button" className={tool} aria-pressed={state.notesMode} onClick={() => dispatch({ type: "toggleNotes" })}>
               <Icon name="pencil" />
               Notes
@@ -272,7 +283,10 @@ export function Play() {
             <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
               <h2 className="semi-condensed text-[22px] font-bold">Hint</h2>
               {/* A progress meter: numbered rungs, filled up to the one shown. */}
-              <ol className="grid w-full grid-cols-4 gap-1 sm:w-auto" aria-label="Hint ladder">
+              <ol
+                className="grid w-full grid-cols-[repeat(4,max-content)] justify-between gap-x-3 sm:w-auto sm:justify-start"
+                aria-label="Hint ladder"
+              >
                 {RUNGS.map((r, i) => {
                   const climbed = Boolean(liveHint && liveHint.level >= i + 1);
                   return (

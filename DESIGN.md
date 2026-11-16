@@ -80,8 +80,8 @@ Fallback stack: `"Archivo Variable", "Arial Narrow", system-ui, sans-serif`.
 
 ## Space and the module
 
-Everything comes from the board. One cell is the module `--cell`: `clamp(34px, 9.6vw, 62px)`
-(the board is 9 cells plus box rules, so it fits a 390 px phone with 16 px gutters and
+Everything comes from the board. One cell is the module `--cell`: `clamp(32px, 9vw, 62px)`
+(9 cells, a 16 px row rail and the box rules fit a 390 px phone with 16 px gutters; it
 caps at about 560 px). Spacing steps: 4, 8, 12, 16, 24, 32, 48 px. Lane row height
 equals one cell. Radii: 2 px on tiles and plates (a flap is nearly square), 6 px on
 dialogs, nothing round except the status dot.
@@ -108,9 +108,16 @@ dialogs, nothing round except the status dot.
   2 px `--box-rule`. Selected cell: 2 px `--signal` inset outline (Night) or `--ink`
   (Enamel) plus a signal plate under the row and column header numbers. Peers of the
   selected cell get a 6% ink tint. Conflicts: `--danger` digit plus a struck underline.
-- **Hint highlight**: pattern cells get a 2 px signal outline; the placement cell gets a
-  signal plate with `--on-signal` digit; eliminated pencil marks are struck through in
-  `--danger`.
+- **Board rails**: row numbers 1 to 9 down the left and column numbers along the top, so
+  the r#c# in every hint and replay caption can be read off the board; the selected
+  cell's row and column numbers sit on signal plates. Decorative (`aria-hidden`): each
+  cell's accessible name already says where it is.
+- **Hint highlight**: from rung 2 the house the hint is about gets a signal wash and the
+  selection's peer tint steps aside, so nothing else reads as evidence. At rung 3 the
+  pattern cells get a 2 px signal outline (for a hidden single, also the placed digits
+  that rule out the house's other cells), eliminated notes are struck through in
+  `--danger`, and the target cell is a signal plate showing the digit to place in
+  `--on-signal`.
 - **Lane** (departure row, a radio in a radiogroup: the chosen lane is replayed): the
   code in its series hue, or on a signal plate when chosen, with a "Replaying" label by
   the name; a node bar on a log scale whose full width is the node limit (the budget, on
