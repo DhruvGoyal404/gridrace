@@ -51,7 +51,8 @@ interface CellProps {
 const OUTLINE = {
   "": "",
   focus: "z-10 shadow-[inset_0_0_0_2px_var(--focus)]",
-  signal: "z-10 shadow-[inset_0_0_0_2px_var(--signal)]",
+  // Hint evidence: signal on Night, ink on Enamel (yellow is only ever a fill there).
+  signal: "z-10 shadow-[inset_0_0_0_2px_var(--evidence)]",
   // The selection while a hint shows evidence: dashed, so it can't be read as part of the proof.
   dashed: "z-10 outline-2 outline-dashed -outline-offset-4 outline-[var(--focus)]",
 };
@@ -198,7 +199,9 @@ export function Board({ cells, givens, notes, selected = null, onSelect, onKey, 
               const bg = target
                 ? "bg-signal"
                 : last === "guess" || marks.area?.has(c)
-                  ? "bg-[var(--signal-wash)]"
+                  ? // Layered over the flap fill: a translucent colour alone would replace it and
+                    // let the dark board backing show through.
+                    "[background-image:linear-gradient(var(--signal-wash),var(--signal-wash))]"
                   : peers?.has(c) || (!isSelected && digit !== 0 && digit === selectedDigit && !marks.hint)
                     ? "[background-image:linear-gradient(var(--tint),var(--tint))]"
                     : "";

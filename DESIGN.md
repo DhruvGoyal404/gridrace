@@ -43,6 +43,7 @@ setting; a toggle overrides it and is remembered per device.
 | `--signal` | `#F5C400` | `#F5C400` | live and selected: primary plate, current step, focus (Night) |
 | `--on-signal` | `#101215` | `#101215` | text on a signal plate |
 | `--focus` | `#F5C400` | `#101215` | focus ring |
+| `--evidence` | `#F5C400` | `#101215` | outline of a hint's proving cells |
 | `--danger` | `#FF6B5E` | `#B42318` | conflicts, mistakes, aborted |
 | `--placed` | `#8FD3FF` | `#0B5CAD` | digits the player or a solver placed (vs givens in `--ink`) |
 
@@ -113,8 +114,8 @@ dialogs, nothing round except the status dot.
   cell's row and column numbers sit on signal plates. Decorative (`aria-hidden`): each
   cell's accessible name already says where it is.
 - **Hint highlight**: from rung 2 the house the hint is about gets a signal wash and the
-  selection's peer tint steps aside, so nothing else reads as evidence. At rung 3 the
-  pattern cells get a 2 px signal outline (for a hidden single, also the placed digits
+  selection's peer tint steps aside, so nothing else reads as evidence. Washes are layered over the flap fill (a gradient), never a translucent background colour, which would let the dark board backing through. At rung 3 the
+  pattern cells get a 2 px `--evidence` outline (signal on Night, ink on Enamel, where yellow is only ever a fill) (for a hidden single, also the placed digits
   that rule out the house's other cells), eliminated notes are struck through in
   `--danger`, and the target cell is a signal plate showing the digit to place in
   `--on-signal`.

@@ -42,6 +42,7 @@ const PAIRS = [
   ["MRV", ["--panel", "--ground"], TEXT],
   ["DLX", ["--panel", "--ground"], TEXT],
   ["--focus", ["--ground", "--panel", "--flap"], UI],
+  ["--evidence", ["--flap"], UI],
   ["--box-rule", ["--flap"], UI],
   ["--signal", ["--ground", "--panel", "--flap"], UI, ["night"]],
 ];

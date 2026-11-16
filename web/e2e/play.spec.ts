@@ -6,7 +6,7 @@ test("play by keyboard: enter, notes, undo, redo, mistakes", async ({ page, erro
   void errors;
   await page.goto(`/play?p=${CLASSIC}`);
   const grid = page.getByRole("grid");
-  await expect(grid).toBeVisible();
+  await expect(grid).toBeVisible({ timeout: 30_000 }); // Play loads lazily, then its worker starts
   await page.getByRole("gridcell", { name: cell(1, 3) }).click();
   await page.keyboard.press("1"); // wrong: the solution has 4 here
   await expect(page.getByRole("gridcell", { name: `${cell(1, 3)}, 1` })).toBeVisible();

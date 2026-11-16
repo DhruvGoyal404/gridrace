@@ -16,6 +16,7 @@
   --signal: #f5c400;
   --on-signal: #101215;
   --focus: #101215;
+  --evidence: #101215;
   --danger: #b42318;
   --placed: #0b5cad;
   --brt: #b93a0b;
@@ -38,6 +39,7 @@
     --ink: #ecedea;
     --ink-2: #a6abb4;
     --focus: #f5c400;
+    --evidence: #f5c400;
     --danger: #ff6b5e;
     --placed: #8fd3ff;
     --brt: #ff7a59;
@@ -60,6 +62,7 @@
   --ink: #ecedea;
   --ink-2: #a6abb4;
   --focus: #f5c400;
+  --evidence: #f5c400;
   --danger: #ff6b5e;
   --placed: #8fd3ff;
   --brt: #ff7a59;
