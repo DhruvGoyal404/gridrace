@@ -172,9 +172,11 @@ bash scripts/gate.sh                         # everything CI runs
 
 ## Hosting
 
-A static site on Cloudflare Pages, deployed from GitHub Actions with an API token scoped
-to Pages only. Nothing bills while it sits idle (free tier, no servers, no databases), so
-unlike my other deployed projects it has no up/down scripts.
+Live at https://gridrace.dhruvgoyal.tech: a static site on Cloudflare Pages, deployed
+from GitHub Actions with an API token scoped to Pages only, and only after every CI job
+on `main` is green. Each deploy is followed by a Lighthouse report (median of three runs)
+in the CI job summary. Nothing bills while it sits idle (free tier, no servers, no
+databases), so unlike my other deployed projects it has no up/down scripts.
 
 ## License
 

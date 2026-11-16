@@ -1,7 +1,7 @@
 # Benchmarks
 
-Native Rust numbers for the four solvers. The browser bench page (M3) will run the same
-corpus through WebAssembly; its numbers will be added here.
+Native Rust numbers for the four solvers, and the same corpus timed as WebAssembly on the
+live site's Bench page (https://gridrace.dhruvgoyal.tech/bench); see "In the browser".
 
 ## Corpus
 

@@ -46,8 +46,8 @@ visual contract; `scripts/contrast.mjs` checks its colours), `.impeccable/surfac
   `--locked` / `npm ci` in CI. A too-new transitive crate is held back with
   `cargo update -p <crate> --precise <version>` (fuzz/: `cc` at 1.10.0; root: `itoa` 1.0.18,
   `syn` 3.0.9). npm `overrides` (web/ and deploy/ force fixed minimatch and glob releases
-  for two advisories) are recorded with expiry dates in docs/DEPENDENCY_EXCEPTIONS.md,
-  "Overrides"; check-deps fails on an unrecorded, mismatched or expired one.
+  for two advisories) are recorded in docs/DEPENDENCY_EXCEPTIONS.md, "Overrides", and
+  expire 2026-12-31; check-deps fails on an unrecorded, mismatched or expired one.
 - **Clean audits.** `cargo deny check` (advisories, licences, sources) and `npm audit`.
 - **Security exception:** a fix for a published advisory may be younger than 14 days.
   Record it in docs/DEPENDENCY_EXCEPTIONS.md with the advisory, the date and an expiry.
@@ -97,9 +97,12 @@ visual contract; `scripts/contrast.mjs` checks its colours), `.impeccable/surfac
 
 ## Deployment
 
-Static files on Cloudflare Pages (free tier), project `gridrace`, custom domain
-gridrace.dhruvgoyal.tech (DNS on Cloudflare). Nothing bills while idle, so there are no
-up/down scripts; the README says so.
+Live at https://gridrace.dhruvgoyal.tech (fallback https://gridrace.pages.dev): static
+files on Cloudflare Pages (free tier), project `gridrace`, DNS on Cloudflare. CI deploys
+every push to `main` once all its other jobs are green. Nothing bills while idle, so
+there are no up/down scripts; the README says so. Cloudflare Web Analytics is off for the
+dhruvgoyal.tech zone (it injected a third-party script the CSP blocks; the footer
+promises no tracking).
 
 - CI's last job deploys `web/dist` with wrangler pinned in `deploy/` (its own lockfile,
   checked by the dependency policy), after every other job passes on `main`. It needs the
